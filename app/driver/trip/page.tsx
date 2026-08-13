@@ -40,8 +40,8 @@ export default function TripPage() {
     <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-black">Trip Control 🚌</h1>
-          <p className="text-gray-400 text-sm mt-1">Manage your active trip and GPS sharing</p>
+          <h1 className="text-2xl font-black">Live GPS Tracking 🚌</h1>
+          <p className="text-gray-400 text-sm mt-1">Real-time bus location sharing</p>
         </div>
 
         {/* Trip timer */}
@@ -79,9 +79,47 @@ export default function TripPage() {
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Map */}
-          <div className="glass rounded-2xl p-4">
-            <h3 className="font-bold mb-3">Live Position</h3>
-            <MapMock buses={[{...myBus, lat:busPos.lat, lng:busPos.lng}]} route={myRoute} height={300}/>
+          <div className="lg:col-span-2">
+            <div className="glass rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-white">Live GPS Location</h3>
+                {tripActive && <span className="text-xs text-[#00C853] glass-green px-2 py-1 rounded-full animate-pulse">Sharing Location</span>}
+              </div>
+              <div className="relative w-full h-[400px] rounded-xl overflow-hidden bg-gray-100">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to bottom, #ecfdf5, #d1fae5)',
+                  }}
+                >
+                  <div className="absolute inset-0 opacity-10" 
+                    style={{
+                      backgroundImage: `
+                        linear-gradient(#10b981 1px, transparent 1px),
+                        linear-gradient(90deg, #10b981 1px, transparent 1px)
+                      `,
+                      backgroundSize: '40px 40px'
+                    }}
+                  />
+                  
+                  {/* Render bus marker */}
+                  <div
+                    className="absolute transform -translate-x-1/2 -translate-y-1/2"
+                    style={{
+                      left: '50%',
+                      top: '50%',
+                    }}
+                  >
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-green-500 rounded-full opacity-30 animate-ping" style={{width: '40px', height: '40px'}} />
+                      <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shadow-lg text-lg">
+                        🚌
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Stop progress */}

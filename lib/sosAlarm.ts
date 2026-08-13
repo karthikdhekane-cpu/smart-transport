@@ -58,7 +58,9 @@ export function startSosAlarm(volume = 0.85): void {
 
   // Distortion for urgency
   const waveshaper = ctx.createWaveShaper();
-  waveshaper.curve = makeDistortionCurve(60);
+  const curve = makeDistortionCurve(60);
+  // Type assertion for compatibility
+  (waveshaper as any).curve = curve;
   waveshaper.oversample = '4x';
 
   osc1.connect(blend1);
@@ -82,7 +84,6 @@ export function startSosAlarm(volume = 0.85): void {
   pulseOsc.start();
 
   oscillators = [osc1, osc2, pulseOsc];
-  lfoNode.start();
 }
 
 export function stopSosAlarm(): void {

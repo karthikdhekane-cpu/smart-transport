@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "GPS Feature Architecture",
+  "description": "Create folder structure and architecture for Live GPS Bus Tracking feature",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "mkdir -p /Users/apple/Campbus/smart-transport/features/gps-tracking/{components,hooks,services,types,utils,mock}"
+  }
+}

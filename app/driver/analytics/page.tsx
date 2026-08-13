@@ -1,5 +1,8 @@
 'use client';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { ETACard, TrafficBadge, StatusBadge } from '@/features/eta';
+import { useETA } from '@/features/eta/hooks/useETA';
 
 const navItems = [
   { href:'/driver',          icon:'🏠', label:'Dashboard' },
@@ -25,6 +28,18 @@ const events = [
 ];
 
 export default function DriverAnalyticsPage() {
+  const { busStates, isLoading, isPlaying } = useETA('BUS-01');
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setTick(p => p + 1);
+    }, 2000);
+    return () => clearInterval(t);
+  }, []);
+
+  const currentBusState = busStates[0];
+
   return (
     <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
       <div className="space-y-6">
@@ -32,6 +47,37 @@ export default function DriverAnalyticsPage() {
           <h1 className="text-2xl font-black">My Analytics 📊</h1>
           <p className="text-gray-400 text-sm mt-1">Performance insights and safety metrics</p>
         </div>
+
+        {/* Live ETA Info */}
+        {isLoading ? (
+          <div className="glass-green rounded-2xl p-6 text-center">
+            <p className="text-[#00C853]">Loading live ETA data...</p>
+          </div>
+        ) : currentBusState ? (
+          <div className="glass-green rounded-2xl p-4">
+            <h3 className="font-bold mb-3">Live Trip Status</h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="text-center">
+                <div className="text-2xl font-black neon-text">{Math.round(currentBusState.currentETA.seconds / 60)}m</div>
+                <div className="text-xs text-gray-400">ETA</div>
+              </div>
+            {currentBusState?.speed ? (
+              <div className="text-center">
+                <div className="text-2xl font-black neon-text">{Math.round(currentBusState.speed)} km/h</div>
+                <div className="text-xs text-gray-400">Speed</div>
+              </div>
+            ) : null}
+              <div className="text-center">
+                <div className="text-2xl font-black neon-text">{Math.round(currentBusState.routeInfo.progressPercentage)}%</div>
+                <div className="text-xs text-gray-400">Progress</div>
+              </div>
+            </div>
+            <div className="mt-3 flex justify-center gap-2">
+              <TrafficBadge level={currentBusState.traffic.level} config={currentBusState.traffic.config} />
+              <StatusBadge status={currentBusState.status} />
+            </div>
+          </div>
+        ) : null}
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

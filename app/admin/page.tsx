@@ -81,13 +81,70 @@ export default function AdminDashboard() {
 
         {/* Map + Alerts */}
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Fleet map */}
-          <div className="lg:col-span-2 glass rounded-2xl p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-white">Live Fleet Map</h2>
-              <span className="text-xs text-[#00C853] glass-green px-2 py-1 rounded-full">{buses.length} buses tracked</span>
+          {/* Live GPS Map */}
+          <div className="lg:col-span-2">
+            <div className="glass rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-white">Live GPS Map</h2>
+                <span className="text-xs text-[#00C853] glass-green px-2 py-1 rounded-full">{buses.length} buses tracked</span>
+              </div>
+              <div className="relative w-full h-[400px] rounded-xl overflow-hidden bg-gray-100">
+                {/* Mapbox GL JS would render here */}
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to bottom, #ecfdf5, #d1fae5)',
+                  }}
+                >
+                  <div className="absolute inset-0 opacity-10" 
+                    style={{
+                      backgroundImage: `
+                        linear-gradient(#10b981 1px, transparent 1px),
+                        linear-gradient(90deg, #10b981 1px, transparent 1px)
+                      `,
+                      backgroundSize: '40px 40px'
+                    }}
+                  />
+                  
+                  {/* Render bus markers */}
+                  {buses.map(bus => (
+                    <div
+                      key={bus.id}
+                      className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-transform"
+                      style={{
+                        left: `${((bus.lng - 76.94) / (76.99 - 76.94)) * 100}%`,
+                        top: `${(1 - (bus.lat - 11.005) / (11.035 - 11.005)) * 100}%`,
+                      }}
+                    >
+                      <div className="relative">
+                        <div className="absolute inset-0 bg-green-500 rounded-full opacity-30 animate-ping" style={{width: '40px', height: '40px'}} />
+                        <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shadow-lg text-lg animate-bounce">
+                          🚌
+                        </div>
+                      </div>
+                      <div className="absolute top-12 left-1/2 -translate-x-1/2 bg-white px-2 py-1 rounded-lg text-xs font-bold text-green-600 whitespace-nowrap shadow-sm">
+                        {bus.number}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Map Legend */}
+                <div className="absolute bottom-4 right-4 z-10 bg-white/90 backdrop-blur px-3 py-2 rounded-lg text-xs">
+                  <div className="font-bold mb-1">Legend</div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    <span>Active Bus</span>
+                  </div>
+                </div>
+                
+                {/* Live Badge */}
+                <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-green-600 font-semibold">LIVE</span>
+                </div>
+              </div>
             </div>
-            <MapMock buses={buses} height={380} showAllBuses/>
           </div>
 
           {/* Alerts panel */}

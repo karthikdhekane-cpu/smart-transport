@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import DashboardBg from '@/components/ui/DashboardBg';
+import { notificationService } from '@/features/notifications';
 
 interface NavItem { href: string; icon: string; label: string }
 interface DashboardLayoutProps {
@@ -18,7 +19,49 @@ const roleIcons  = { student: '🎓', driver: '🚌', admin: '⚙️' };
 export default function DashboardLayout({ children, role, navItems, userName = 'User' }: DashboardLayoutProps) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notificationsRef = useRef<HTMLDivElement>(null);
   const color = roleColors[role];
+
+  // Load unread count from notification service
+  useEffect(() => {
+    const loadUnreadCount = () => {
+      const unread = notificationService.getUnreadNotifications();
+      setUnreadCount(unread.length);
+    };
+    
+    loadUnreadCount();
+    
+    // Note: In a real implementation, we'd subscribe to notification changes
+    // For now, we'll use polling or manual updates
+    
+    return () => {
+      // Cleanup
+    };
+  }, []);
+
+  // Close notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    };
+    
+    if (notificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [notificationsOpen]);
+
+  const handleMarkAllRead = () => {
+    notificationService.markAllAsRead();
+    setUnreadCount(0);
+  };
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] flex relative">
@@ -104,11 +147,81 @@ export default function DashboardLayout({ children, role, navItems, userName = '
             <span className="w-2 h-2 rounded-full bg-[#059669] animate-pulse"/>
             <span className="text-xs text-[#64748b] font-medium">Live · {new Date().toLocaleTimeString()}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="relative bg-white border border-[#e2e8f0] rounded-xl p-2 text-[#64748b] hover:text-[#0f172a] transition-colors shadow-sm">
-              🔔
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-[10px] flex items-center justify-center text-white font-bold">3</span>
-            </button>
+          <div className="flex items-center gap-3 relative" ref={notificationsRef}>
+            <div className="relative">
+              <button 
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                className="relative bg-white border border-[#e2e8f0] rounded-xl p-2 text-[#64748b] hover:text-[#0f172a] transition-colors shadow-sm"
+              >
+                🔔
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-[10px] flex items-center justify-center text-white font-bold animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {/* Notifications Dropdown */}
+              {notificationsOpen && (
+                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#e2e8f0] overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-[#e2e8f0] flex items-center justify-between bg-[#f8fafc]">
+                    <span className="font-semibold text-[#0f172a] text-sm">Notifications</span>
+                    <button 
+                      onClick={handleMarkAllRead}
+                      className="text-xs text-[#64748b] hover:text-[#0f172a] transition-colors font-medium"
+                    >
+                      Mark all read
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notificationService.getUnreadNotifications().length === 0 ? (
+                      <div className="p-8 text-center text-[#94a3b8]">
+                        <div className="text-4xl mb-2">🔔</div>
+                        <p className="text-sm">No unread notifications</p>
+                      </div>
+                    ) : (
+                      notificationService.getAllNotifications().slice(0, 5).map((n) => (
+                        <div 
+                          key={n.id}
+                          onClick={() => {
+                            notificationService.markAsRead(n.id);
+                            setUnreadCount(notificationService.getUnreadNotifications().length);
+                            setNotificationsOpen(false);
+                          }}
+                          className="p-4 border-b border-[#f1f5f9] hover:bg-[#f8fafc] transition-colors cursor-pointer last:border-0"
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="text-xl mt-0.5">{notificationService.getNotificationIcon(n.type)}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`text-sm font-semibold ${notificationService.getNotificationColor(n.type)}`}>
+                                  {n.title}
+                                </span>
+                                {!n.read && <span className="w-2 h-2 rounded-full bg-[#00C853]"/>}
+                              </div>
+                              <p className="text-xs text-[#64748b] mb-2">{n.message}</p>
+                              <div className="flex items-center gap-2 text-[10px] text-[#94a3b8]">
+                                <span>{formatTimeAgo(n.timestamp)}</span>
+                                {n.busNumber && <span>• {n.busNumber}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div className="p-3 border-t border-[#e2e8f0] bg-[#f8fafc]">
+                    <Link 
+                      href="/student/notifications" 
+                      className="block w-full text-center text-xs font-semibold text-[#0f172a] hover:text-[#00C853] transition-colors"
+                      onClick={() => setNotificationsOpen(false)}
+                    >
+                      View all notifications
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{background:color}}>
               {userName.charAt(0).toUpperCase()}
             </div>
@@ -122,4 +235,15 @@ export default function DashboardLayout({ children, role, navItems, userName = '
       </div>
     </div>
   );
+}
+
+// Helper function to format time ago
+function formatTimeAgo(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+  
+  if (diff < 60000) return 'Just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
 }

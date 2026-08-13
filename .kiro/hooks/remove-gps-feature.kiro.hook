@@ -1,0 +1,13 @@
+{
+  "enabled": true,
+  "name": "Remove GPS Feature",
+  "description": "Remove GPS feature folder to recreate",
+  "version": "1",
+  "when": {
+    "type": "userTriggered"
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "rm -rf /Users/apple/Campbus/smart-transport/features"
+  }
+}
