@@ -443,11 +443,11 @@ export default function LandingPage() {
               Tailored for<br />every role.
             </h2>
             <p className="text-[15px] text-[#64748b] mt-4 max-w-md leading-relaxed">
-              Dedicated experiences for students, drivers, and administrators.
+              Dedicated experiences for students, drivers, administrators, and parents.
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-5">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
             {[
               {title:'Student Portal',label:'Students',href:'/student',color:'#059669',
                 desc:'Track your bus live, get smart ETA alerts, and stay safe with one-tap SOS.',
@@ -458,6 +458,9 @@ export default function LandingPage() {
               {title:'Admin Panel',label:'Administrators',href:'/admin',color:'#3b82f6',
                 desc:'Command the entire fleet with live maps, analytics heatmaps, and emergency alerts.',
                 features:['Fleet monitoring','Analytics & heatmaps','Driver rankings','Emergency alerts','Manage routes']},
+              {title:'Parent Portal',label:'Parents',href:'/parent',color:'#9C27B0',
+                desc:'Track your child, receive notifications, and monitor safety in real-time.',
+                features:['Child tracking','Live notifications','ETA alerts','Safety monitoring','Route status']},
             ].map(d => (
               <Link key={d.title} href={d.href} className="portal-card glass rounded-2xl p-8 block group relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-px" style={{background:`linear-gradient(90deg,transparent,${d.color}45,transparent)`}} />
@@ -502,6 +505,7 @@ export default function LandingPage() {
                 <Link href="/student" className="btn-primary px-8 py-3.5 text-[14px] font-semibold text-white">Student Portal →</Link>
                 <Link href="/driver" className="btn-glass px-8 py-3.5 text-[14px]">Driver Portal</Link>
                 <Link href="/admin" className="btn-outline-green px-8 py-3.5 text-[14px]">Admin Panel</Link>
+                <Link href="/parent" className="btn-outline-purple px-8 py-3.5 text-[14px]">Parent Portal</Link>
               </div>
             </div>
           </div>
@@ -522,7 +526,7 @@ export default function LandingPage() {
             </Link>
 
             <div className="flex flex-wrap justify-center gap-7">
-              {[{l:'Student',h:'/student'},{l:'Driver',h:'/driver'},{l:'Admin',h:'/admin'},{l:'Features',h:'#features'},{l:'Safety',h:'#safety'}].map(l => (
+              {[{l:'Student',h:'/student'},{l:'Driver',h:'/driver'},{l:'Admin',h:'/admin'},{l:'Parent',h:'/parent'},{l:'Features',h:'#features'},{l:'Safety',h:'#safety'}].map(l => (
                 <Link key={l.l} href={l.h} className="text-[13px] text-[#94a3b8] hover:text-white/80 transition-colors duration-150 font-medium">{l.l}</Link>
               ))}
             </div>

@@ -38,7 +38,7 @@ export default function ParentTrackingPage() {
     : 8;
 
   return (
-    <DashboardLayout role="student" navItems={navItems} userName="Parent">
+    <DashboardLayout role="parent" navItems={navItems} userName="Parent">
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-black">Live Bus Tracking 🗺️</h1>

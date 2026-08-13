@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
-type Role = 'student' | 'driver' | 'admin';
+type Role = 'student' | 'driver' | 'admin' | 'parent';
 type Stage = 'select' | 'login';
 
 const roleConfig = {
@@ -60,6 +60,24 @@ const roleConfig = {
     ],
     previewTitle: 'Admin Command Center',
     previewDesc: 'Fleet monitoring, analytics, and emergency alerts.',
+  },
+  parent: {
+    label: 'Parent',
+    sub: 'Track your child, get notifications',
+    icon: '◑',
+    color: '#9C27B0',
+    glow: 'rgba(156,39,176,0.15)',
+    border: 'rgba(156,39,176,0.25)',
+    bg: 'rgba(156,39,176,0.05)',
+    placeholder: 'parent@email.com',
+    fieldLabel: 'Parent Email',
+    preview: [
+      { label: 'Child Status', value: 'On Bus', sub: 'Live tracking' },
+      { label: 'ETA', value: '8 min', sub: 'To pickup stop' },
+      { label: 'Notifications', value: '3', sub: 'Unread alerts' },
+    ],
+    previewTitle: 'Parent Dashboard Preview',
+    previewDesc: 'Track your child, receive notifications, and monitor safety.',
   },
 };
 
@@ -123,7 +141,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-5 w-full max-w-4xl">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 w-full max-w-5xl">
             {(Object.entries(roleConfig) as [Role, typeof roleConfig.student][]).map(([key, cfg], i) => (
               <button
                 key={key}
@@ -296,15 +314,15 @@ export default function LoginPage() {
               {/* Demo hint */}
               <div className="mt-8 pt-6 border-t border-white/5">
                 <p className="text-xs text-gray-600 text-center mb-3 tracking-wide">Demo — use any password</p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                   {(Object.entries(roleConfig) as [Role, typeof roleConfig.student][]).map(([key, c]) => (
                     <button
                       key={key}
-                      onClick={() => { setRole(key); setEmail(key === 'student' ? '21CS001' : key === 'driver' ? 'D001' : 'admin'); }}
+                      onClick={() => { setRole(key); setEmail(key === 'student' ? '21CS001' : key === 'driver' ? 'D001' : key === 'admin' ? 'admin' : 'parent'); }}
                       className="glass rounded-xl p-2.5 text-center text-xs transition-all hover:scale-105"
                       style={{borderColor: key === role ? c.border : 'transparent'}}>
                       <div className="font-semibold" style={{color: c.color}}>{c.label}</div>
-                      <div className="text-gray-600 mt-0.5">{key === 'student' ? '21CS001' : key === 'driver' ? 'D001' : 'admin'}</div>
+                      <div className="text-gray-600 mt-0.5">{key === 'student' ? '21CS001' : key === 'driver' ? 'D001' : key === 'admin' ? 'admin' : 'parent'}</div>
                     </button>
                   ))}
                 </div>

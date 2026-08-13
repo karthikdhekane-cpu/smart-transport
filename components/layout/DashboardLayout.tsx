@@ -1,23 +1,24 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import DashboardBg from '@/components/ui/DashboardBg';
 import { notificationService } from '@/features/notifications';
 
 interface NavItem { href: string; icon: string; label: string }
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  role: 'student' | 'driver' | 'admin';
+  role: 'student' | 'driver' | 'admin' | 'parent';
   navItems: NavItem[];
   userName?: string;
 }
 
-const roleColors = { student: '#059669', driver: '#d97706', admin: '#3b82f6' };
-const roleIcons  = { student: '🎓', driver: '🚌', admin: '⚙️' };
+const roleColors = { student: '#059669', driver: '#d97706', admin: '#3b82f6', parent: '#9C27B0' };
+const roleIcons  = { student: '🎓', driver: '🚌', admin: '⚙️', parent: '👨‍👩‍👧' };
 
 export default function DashboardLayout({ children, role, navItems, userName = 'User' }: DashboardLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -95,10 +96,13 @@ export default function DashboardLayout({ children, role, navItems, userName = '
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
-              <Link
+              <a
                 key={item.href}
                 href={item.href}
-                onClick={() => setSidebarOpen(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.location.href = item.href;
+                }}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   active
                     ? 'sidebar-active text-[#0f172a]'
@@ -108,7 +112,7 @@ export default function DashboardLayout({ children, role, navItems, userName = '
                 <span className="text-base">{item.icon}</span>
                 {item.label}
                 {active && <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{background:color}}/>}
-              </Link>
+              </a>
             );
           })}
         </nav>
@@ -212,9 +216,9 @@ export default function DashboardLayout({ children, role, navItems, userName = '
                   </div>
                   <div className="p-3 border-t border-[#e2e8f0] bg-[#f8fafc]">
                     <Link 
-                      href="/student/notifications" 
-                      className="block w-full text-center text-xs font-semibold text-[#0f172a] hover:text-[#00C853] transition-colors"
+                      href="/student/notifications"
                       onClick={() => setNotificationsOpen(false)}
+                      className="block w-full text-center text-xs font-semibold text-[#0f172a] hover:text-[#00C853] transition-colors"
                     >
                       View all notifications
                     </Link>

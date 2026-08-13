@@ -50,7 +50,7 @@ export default function ParentNotificationsPage() {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <DashboardLayout role="student" navItems={navItems} userName="Parent">
+    <DashboardLayout role="parent" navItems={navItems} userName="Parent">
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
