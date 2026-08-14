@@ -113,7 +113,7 @@ export function isSosPlaying(): boolean {
   return isPlaying;
 }
 
-function makeDistortionCurve(amount: number): Float32Array {
+function makeDistortionCurve(amount: number) {
   const n = 256;
   const curve = new Float32Array(n);
   for (let i = 0; i < n; i++) {
