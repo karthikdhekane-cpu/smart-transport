@@ -44,7 +44,7 @@ export default function ParentDashboard() {
   const occupancyPct = childBus ? Math.round((childBus.occupancy / childBus.capacity) * 100) : 0;
 
   return (
-    <DashboardLayout role="student" navItems={navItems} userName="Parent">
+    <DashboardLayout role="parent" navItems={navItems} userName="Parent">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

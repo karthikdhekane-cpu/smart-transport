@@ -293,6 +293,23 @@ body {
   transform: translateY(-1px);
 }
 
+.btn-outline-purple {
+  background: transparent;
+  border: 1px solid rgba(156,39,176,0.3);
+  color: #9C27B0;
+  font-weight: 500;
+  border-radius: 10px;
+  transition: all .25s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-outline-purple:hover {
+  background: rgba(156,39,176,0.07);
+  border-color: rgba(156,39,176,0.5);
+  transform: translateY(-1px);
+}
+
 /* ── FEATURE CARD ── */
 .feature-card {
   position: relative;
