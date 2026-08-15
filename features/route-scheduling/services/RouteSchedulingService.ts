@@ -1,16 +1,17 @@
-// Route Scheduling Service - Automatic route scheduling with conflict detection
-// Handles bus/driver assignment, trip scheduling, and conflict prevention
+// Route scheduling service for route assignments, trip scheduling, and conflict prevention.
 
-import { mockBuses, mockRoutes, mockDrivers } from '@/lib/mockData';
+import { mockBuses, mockDrivers, mockRoutes } from '@/lib/mockData';
 
 export interface ScheduledTrip {
   id: string;
   routeId: string;
   routeName: string;
   busId: string;
+  busNumber: string;
   driverId: string;
-  startTime: number; // Unix timestamp
-  endTime: number; // Unix timestamp
+  driverName: string;
+  startTime: number;
+  endTime: number;
   status: 'scheduled' | 'active' | 'completed' | 'cancelled';
 }
 
@@ -19,7 +20,14 @@ export interface ScheduleConflict {
   resourceId: string;
   conflictingTrips: string[];
   message: string;
+  conflictingTripId: string;
+  conflictingTrip: ScheduledTrip;
+  newTrip: Partial<ScheduledTrip>;
+  reason: string;
 }
+
+// Retained as the detailed conflict name used by the live ETA work.
+export type Conflict = ScheduleConflict;
 
 export interface RouteScheduleStatus {
   routeId: string;
@@ -31,184 +39,233 @@ export interface RouteScheduleStatus {
   conflicts?: ScheduleConflict[];
 }
 
+type AssignmentResult = { success: boolean; conflict?: ScheduleConflict };
+type TripResult = { success: boolean; tripId?: string; conflicts?: ScheduleConflict[] };
+
 class RouteSchedulingService {
-  private scheduledTrips: Map<string, ScheduledTrip> = new Map();
-  private routeAssignments: Map<string, string> = new Map(); // routeId -> busId
-  private driverAssignments: Map<string, string> = new Map(); // routeId -> driverId
+  private scheduledTrips = new Map<string, ScheduledTrip>();
+  private routeAssignments = new Map<string, string>();
+  private routeDriverAssignments = new Map<string, string>();
 
   constructor() {
     this.initializeFromMockData();
   }
 
   private initializeFromMockData() {
-    // Initialize with existing mock data assignments
-    mockRoutes.forEach(route => {
-      const bus = mockBuses.find(b => b.id === route.busId);
-      if (bus) {
-        this.routeAssignments.set(route.id, bus.id);
-        
-        const driver = mockDrivers.find(d => d.busId === bus.id);
-        if (driver) {
-          this.driverAssignments.set(route.id, driver.id);
-        }
-      }
+    const now = Date.now();
+    const hour = 60 * 60 * 1000;
+
+    mockRoutes.forEach((route, index) => {
+      const bus = mockBuses.find(candidate => candidate.id === route.busId);
+      const driver = bus && mockDrivers.find(candidate => candidate.busId === bus.id);
+
+      if (!bus || !driver) return;
+
+      this.routeAssignments.set(route.id, bus.id);
+      this.routeDriverAssignments.set(route.id, driver.id);
+
+      const trip: ScheduledTrip = {
+        id: `trip-${bus.id}-${index}`,
+        routeId: route.id,
+        routeName: route.name,
+        busId: bus.id,
+        busNumber: bus.number,
+        driverId: driver.id,
+        driverName: driver.name,
+        startTime: now + index * 2 * hour,
+        endTime: now + (index * 2 + 1) * hour,
+        status: 'scheduled',
+      };
+
+      this.scheduledTrips.set(trip.id, trip);
     });
   }
 
-  // Assign a bus to a route
-  assignBusToRoute(routeId: string, busId: string): { success: boolean; conflict?: ScheduleConflict } {
-    // Check if bus is already assigned to another route
+  private timeRangesOverlap(startA: number, endA: number, startB: number, endB: number) {
+    return startA < endB && endA > startB;
+  }
+
+  private createConflict(
+    type: 'bus' | 'driver',
+    resourceId: string,
+    conflictingTrip: ScheduledTrip,
+    newTrip: Partial<ScheduledTrip>,
+  ): ScheduleConflict {
+    const label = type === 'bus' ? 'Bus' : 'Driver';
+
+    return {
+      type,
+      resourceId,
+      conflictingTrips: [conflictingTrip.id],
+      message: `${label} ${resourceId} has an overlapping trip ${conflictingTrip.id}`,
+      conflictingTripId: conflictingTrip.id,
+      conflictingTrip,
+      newTrip,
+      reason: `${label} ${resourceId} is already assigned to trip ${conflictingTrip.id} during this time period`,
+    };
+  }
+
+  checkBusConflict(busId: string, startTime: number, endTime: number, excludeTripId?: string): Conflict | null {
+    const conflictingTrip = Array.from(this.scheduledTrips.values()).find(trip =>
+      trip.busId === busId
+      && trip.id !== excludeTripId
+      && trip.status !== 'cancelled'
+      && this.timeRangesOverlap(startTime, endTime, trip.startTime, trip.endTime),
+    );
+
+    return conflictingTrip
+      ? this.createConflict('bus', busId, conflictingTrip, { busId, startTime, endTime })
+      : null;
+  }
+
+  checkDriverConflict(driverId: string, startTime: number, endTime: number, excludeTripId?: string): Conflict | null {
+    const conflictingTrip = Array.from(this.scheduledTrips.values()).find(trip =>
+      trip.driverId === driverId
+      && trip.id !== excludeTripId
+      && trip.status !== 'cancelled'
+      && this.timeRangesOverlap(startTime, endTime, trip.startTime, trip.endTime),
+    );
+
+    return conflictingTrip
+      ? this.createConflict('driver', driverId, conflictingTrip, { driverId, startTime, endTime })
+      : null;
+  }
+
+  checkAllConflicts(
+    busId: string,
+    driverId: string,
+    startTime: number,
+    endTime: number,
+    excludeTripId?: string,
+  ): Conflict[] {
+    return [
+      this.checkBusConflict(busId, startTime, endTime, excludeTripId),
+      this.checkDriverConflict(driverId, startTime, endTime, excludeTripId),
+    ].filter((conflict): conflict is Conflict => conflict !== null);
+  }
+
+  assignBusToRoute(routeId: string, busId: string): AssignmentResult;
+  assignBusToRoute(routeId: string, busId: string, driverId: string, startTime: number, durationHours?: number): TripResult;
+  assignBusToRoute(
+    routeId: string,
+    busId: string,
+    driverId?: string,
+    startTime?: number,
+    durationHours = 1,
+  ): AssignmentResult | TripResult {
+    if (driverId !== undefined && startTime !== undefined) {
+      return this.scheduleTrip(routeId, busId, driverId, startTime, durationHours * 60 * 60 * 1000);
+    }
+
     const existingRoute = Array.from(this.routeAssignments.entries())
-      .find(([_, assignedBusId]) => assignedBusId === busId);
-    
-    if (existingRoute && existingRoute[0] !== routeId) {
-      return {
-        success: false,
-        conflict: {
-          type: 'bus',
-          resourceId: busId,
-          conflictingTrips: [existingRoute[0]],
-          message: `Bus ${busId} is already assigned to route ${existingRoute[0]}`
-        }
-      };
+      .find(([assignedRouteId, assignedBusId]) => assignedBusId === busId && assignedRouteId !== routeId);
+
+    if (existingRoute) {
+      const conflictingTrip = this.getRouteSchedule(existingRoute[0])[0];
+      if (conflictingTrip) {
+        return { success: false, conflict: this.createConflict('bus', busId, conflictingTrip, { routeId, busId }) };
+      }
     }
 
     this.routeAssignments.set(routeId, busId);
     return { success: true };
   }
 
-  // Assign a driver to a route
-  assignDriverToRoute(routeId: string, driverId: string): { success: boolean; conflict?: ScheduleConflict } {
-    // Check if driver is already assigned to another route
-    const existingRoute = Array.from(this.driverAssignments.entries())
-      .find(([_, assignedDriverId]) => assignedDriverId === driverId);
-    
-    if (existingRoute && existingRoute[0] !== routeId) {
-      return {
-        success: false,
-        conflict: {
-          type: 'driver',
-          resourceId: driverId,
-          conflictingTrips: [existingRoute[0]],
-          message: `Driver ${driverId} is already assigned to route ${existingRoute[0]}`
-        }
-      };
+  assignDriverToRoute(routeId: string, driverId: string): AssignmentResult {
+    const existingRoute = Array.from(this.routeDriverAssignments.entries())
+      .find(([assignedRouteId, assignedDriverId]) => assignedDriverId === driverId && assignedRouteId !== routeId);
+
+    if (existingRoute) {
+      const conflictingTrip = this.getRouteSchedule(existingRoute[0])[0];
+      if (conflictingTrip) {
+        return { success: false, conflict: this.createConflict('driver', driverId, conflictingTrip, { routeId, driverId }) };
+      }
     }
 
-    this.driverAssignments.set(routeId, driverId);
+    this.routeDriverAssignments.set(routeId, driverId);
     return { success: true };
   }
 
-  // Schedule a trip with conflict detection
   scheduleTrip(
     routeId: string,
     busId: string,
     driverId: string,
     startTime: number,
-    estimatedDuration: number
-  ): { success: boolean; tripId?: string; conflicts?: ScheduleConflict[] } {
-    const conflicts: ScheduleConflict[] = [];
+    estimatedDuration: number,
+  ): TripResult {
+    const route = mockRoutes.find(candidate => candidate.id === routeId);
+    const bus = mockBuses.find(candidate => candidate.id === busId);
+    const driver = mockDrivers.find(candidate => candidate.id === driverId);
+
+    if (!route || !bus || !driver) return { success: false };
+
     const endTime = startTime + estimatedDuration;
+    const conflicts = this.checkAllConflicts(busId, driverId, startTime, endTime);
+    if (conflicts.length > 0) return { success: false, conflicts };
 
-    // Check bus availability for time window
-    const busTrips = Array.from(this.scheduledTrips.values())
-      .filter(trip => trip.busId === busId && trip.status !== 'cancelled');
-    
-    for (const trip of busTrips) {
-      if (this.timeRangesOverlap(startTime, endTime, trip.startTime, trip.endTime)) {
-        conflicts.push({
-          type: 'bus',
-          resourceId: busId,
-          conflictingTrips: [trip.id],
-          message: `Bus ${busId} has overlapping trip ${trip.id} during this time window`
-        });
-      }
-    }
-
-    // Check driver availability for time window
-    const driverTrips = Array.from(this.scheduledTrips.values())
-      .filter(trip => trip.driverId === driverId && trip.status !== 'cancelled');
-    
-    for (const trip of driverTrips) {
-      if (this.timeRangesOverlap(startTime, endTime, trip.startTime, trip.endTime)) {
-        conflicts.push({
-          type: 'driver',
-          resourceId: driverId,
-          conflictingTrips: [trip.id],
-          message: `Driver ${driverId} has overlapping trip ${trip.id} during this time window`
-        });
-      }
-    }
-
-    if (conflicts.length > 0) {
-      return { success: false, conflicts };
-    }
-
-    // Create the trip
-    const tripId = `TRIP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const route = mockRoutes.find(r => r.id === routeId);
-    
     const trip: ScheduledTrip = {
-      id: tripId,
+      id: `trip-${busId}-${Date.now()}`,
       routeId,
-      routeName: route?.name || 'Unknown Route',
+      routeName: route.name,
       busId,
+      busNumber: bus.number,
       driverId,
+      driverName: driver.name,
       startTime,
       endTime,
-      status: 'scheduled'
+      status: 'scheduled',
     };
 
-    this.scheduledTrips.set(tripId, trip);
+    this.scheduledTrips.set(trip.id, trip);
     this.routeAssignments.set(routeId, busId);
-    this.driverAssignments.set(routeId, driverId);
-
-    return { success: true, tripId };
+    this.routeDriverAssignments.set(routeId, driverId);
+    return { success: true, tripId: trip.id };
   }
 
-  // Check if two time ranges overlap
-  private timeRangesOverlap(start1: number, end1: number, start2: number, end2: number): boolean {
-    return start1 < end2 && end1 > start2;
-  }
-
-  // Get route schedule status
   getRouteScheduleStatus(routeId: string): RouteScheduleStatus {
-    const route = mockRoutes.find(r => r.id === routeId);
-    if (!route) {
-      return {
-        routeId,
-        routeName: 'Unknown Route',
-        status: 'unscheduled'
-      };
-    }
+    const route = mockRoutes.find(candidate => candidate.id === routeId);
+    if (!route) return { routeId, routeName: 'Unknown Route', status: 'unscheduled' };
 
-    const busId = this.routeAssignments.get(routeId);
-    const driverId = this.driverAssignments.get(routeId);
-
-    // Find next scheduled or active trip for this route
-    const now = Date.now();
-    const nextTrip = Array.from(this.scheduledTrips.values())
-      .filter(trip => trip.routeId === routeId && (trip.status === 'scheduled' || trip.status === 'active'))
-      .sort((a, b) => a.startTime - b.startTime)[0];
-
-    const status = nextTrip ? (nextTrip.status === 'active' ? 'active' : 'scheduled') : 'unscheduled';
+    const nextTrip = this.getRouteSchedule(routeId)
+      .find(trip => trip.status === 'scheduled' || trip.status === 'active');
 
     return {
       routeId,
       routeName: route.name,
-      busId,
-      driverId,
+      busId: this.routeAssignments.get(routeId),
+      driverId: this.routeDriverAssignments.get(routeId),
       nextTrip,
-      status
+      status: nextTrip?.status === 'active' ? 'active' : nextTrip ? 'scheduled' : 'unscheduled',
     };
   }
 
-  // Get all route schedule statuses
   getAllRouteScheduleStatuses(): RouteScheduleStatus[] {
     return mockRoutes.map(route => this.getRouteScheduleStatus(route.id));
   }
 
-  // Cancel a trip
+  getRouteSchedule(routeId: string): ScheduledTrip[] {
+    return Array.from(this.scheduledTrips.values())
+      .filter(trip => trip.routeId === routeId)
+      .sort((left, right) => left.startTime - right.startTime);
+  }
+
+  getAllScheduledTrips(): ScheduledTrip[] {
+    return Array.from(this.scheduledTrips.values())
+      .sort((left, right) => left.startTime - right.startTime);
+  }
+
+  getTrip(tripId: string): ScheduledTrip | null {
+    return this.scheduledTrips.get(tripId) || null;
+  }
+
+  getTripsForBus(busId: string): ScheduledTrip[] {
+    return this.getAllScheduledTrips().filter(trip => trip.busId === busId);
+  }
+
+  getTripsForDriver(driverId: string): ScheduledTrip[] {
+    return this.getAllScheduledTrips().filter(trip => trip.driverId === driverId);
+  }
+
   cancelTrip(tripId: string): boolean {
     const trip = this.scheduledTrips.get(tripId);
     if (!trip) return false;
@@ -218,7 +275,6 @@ class RouteSchedulingService {
     return true;
   }
 
-  // Start a trip
   startTrip(tripId: string): boolean {
     const trip = this.scheduledTrips.get(tripId);
     if (!trip || trip.status !== 'scheduled') return false;
@@ -228,34 +284,34 @@ class RouteSchedulingService {
     return true;
   }
 
-  // Complete a trip
   completeTrip(tripId: string): boolean {
     const trip = this.scheduledTrips.get(tripId);
-    if (!trip) return false;
+    if (!trip || trip.status !== 'active') return false;
 
     trip.status = 'completed';
-    trip.endTime = Date.now();
     this.scheduledTrips.set(tripId, trip);
     return true;
   }
 
-  // Get all scheduled trips
-  getAllScheduledTrips(): ScheduledTrip[] {
-    return Array.from(this.scheduledTrips.values());
+  getAvailableBuses(): typeof mockBuses {
+    const assignedBusIds = new Set(
+      this.getAllScheduledTrips()
+        .filter(trip => trip.status === 'scheduled' || trip.status === 'active')
+        .map(trip => trip.busId),
+    );
+
+    return mockBuses.filter(bus => !assignedBusIds.has(bus.id));
   }
 
-  // Get trips for a specific bus
-  getTripsForBus(busId: string): ScheduledTrip[] {
-    return Array.from(this.scheduledTrips.values())
-      .filter(trip => trip.busId === busId);
-  }
+  getAvailableDrivers(): typeof mockDrivers {
+    const assignedDriverIds = new Set(
+      this.getAllScheduledTrips()
+        .filter(trip => trip.status === 'scheduled' || trip.status === 'active')
+        .map(trip => trip.driverId),
+    );
 
-  // Get trips for a specific driver
-  getTripsForDriver(driverId: string): ScheduledTrip[] {
-    return Array.from(this.scheduledTrips.values())
-      .filter(trip => trip.driverId === driverId);
+    return mockDrivers.filter(driver => !assignedDriverIds.has(driver.id));
   }
 }
 
-// Export singleton instance
 export const routeSchedulingService = new RouteSchedulingService();
