@@ -2,6 +2,9 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
+import { DriverStatusCard } from '@/components/driver-status/DriverStatusCard';
+import { DriverAvailabilityToggle } from '@/components/driver-availability/DriverAvailabilityToggle';
+import { useDriverState } from '@/features/driver-state/hooks/useDriverState';
 import { mockBuses, mockRoutes } from '@/lib/mockData';
 
 const navItems = [
@@ -9,6 +12,8 @@ const navItems = [
   { href:'/driver/trip',     icon:'🚌', label:'Trip Control' },
   { href:'/driver/analytics',icon:'📊', label:'My Analytics' },
   { href:'/driver/safety',   icon:'🛡️', label:'Safety Score' },
+  { href:'/driver/trip-history', icon:'📅', label:'Trip History' },
+  { href:'/driver/attendance', icon:'📋', label:'Attendance' },
 ];
 
 export default function DriverDashboard() {
@@ -19,6 +24,9 @@ export default function DriverDashboard() {
   const [busPos, setBusPos] = useState({ lat: myBus.lat, lng: myBus.lng });
   const [sosActive, setSosActive] = useState(false);
   const [events, setEvents] = useState<{time:string,msg:string,type:string}[]>([]);
+  
+  // Driver state
+  const { status, setStatus, availability, setAvailability, session, isLoading } = useDriverState('D001');
 
   useEffect(() => {
     if (!tripActive) return;
@@ -52,14 +60,16 @@ export default function DriverDashboard() {
   return (
     <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-black text-white">Driver Dashboard 🚌</h1>
             <p className="text-gray-400 text-sm mt-1">Rajesh Kumar · {myBus.number} · Route A</p>
           </div>
-          <div className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${tripActive ? 'glass-green text-[#00C853]' : 'glass text-gray-400'}`}>
-            <span className={`w-2 h-2 rounded-full ${tripActive ? 'bg-[#00C853] animate-pulse' : 'bg-gray-600'}`}/>
-            {tripActive ? 'Trip Active' : 'Off Duty'}
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${tripActive ? 'glass-green text-[#00C853]' : 'glass text-gray-400'}`}>
+              <span className={`w-2 h-2 rounded-full ${tripActive ? 'bg-[#00C853] animate-pulse' : 'bg-gray-600'}`}/>
+              {tripActive ? 'Trip Active' : 'Off Duty'}
+            </div>
           </div>
         </div>
 
@@ -72,6 +82,12 @@ export default function DriverDashboard() {
             </div>
           </div>
         )}
+
+        {/* Driver Status and Availability */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <DriverStatusCard currentStatus={status} onSelectStatus={setStatus} />
+          <DriverAvailabilityToggle availability={availability} onToggle={setAvailability} />
+        </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -119,6 +135,12 @@ export default function DriverDashboard() {
                 </div>
                 <div className="flex justify-between text-gray-400">
                   <span>Passengers</span><span className="text-white">{myBus.occupancy}/{myBus.capacity}</span>
+                </div>
+                <div className="flex justify-between text-gray-400">
+                  <span>Status</span><span className="text-white capitalize">{status}</span>
+                </div>
+                <div className="flex justify-between text-gray-400">
+                  <span>Availability</span><span className="text-white capitalize">{availability}</span>
                 </div>
               </div>
             </div>

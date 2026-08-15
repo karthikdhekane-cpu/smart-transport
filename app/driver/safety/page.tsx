@@ -1,5 +1,8 @@
 'use client';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { geofenceService } from '@/features/geofencing/services/GeofenceService';
+import { driverStateService } from '@/features/driver-state/services/DriverStateService';
 
 const navItems = [
   { href:'/driver',          icon:'🏠', label:'Dashboard' },
@@ -7,6 +10,20 @@ const navItems = [
   { href:'/driver/analytics',icon:'📊', label:'My Analytics' },
   { href:'/driver/safety',   icon:'🛡️', label:'Safety Score' },
 ];
+
+const mockRouteDeviation = {
+  busId: 'BUS-03',
+  deviationDistance: 250,
+  isDeviated: true,
+  lastReportedAt: Date.now() - 1800000,
+};
+
+const mockUnauthorizedStop = {
+  busId: 'BUS-02',
+  location: { lat: 11.0120, lng: 76.9500 },
+  stopDuration: 45,
+  detectedAt: Date.now() - 900000,
+};
 
 export default function DriverSafetyPage() {
   const score = 94;
@@ -17,6 +34,22 @@ export default function DriverSafetyPage() {
     { label:'Turn Safety', value:98, icon:'↩️' },
     { label:'Idle Management', value:88, icon:'⏸️' },
   ];
+
+  // Geofencing alerts
+  const [geofenceAlerts, setGeofenceAlerts] = useState(geofenceService.getGeofenceAlerts());
+  const [unreadAlerts, setUnreadAlerts] = useState(geofenceService.getUnreadGeofenceAlerts());
+
+  useEffect(() => {
+    const alerts = geofenceService.getGeofenceAlerts();
+    setGeofenceAlerts(alerts);
+    setUnreadAlerts(geofenceService.getUnreadGeofenceAlerts());
+  }, []);
+
+  // Route deviation state
+  const [deviation, setDeviation] = useState(driverStateService.getRouteDeviation('BUS-03'));
+
+  // Unauthorized stop state
+  const [unauthorizedStop, setUnauthorizedStop] = useState(driverStateService.getUnauthorizedStop('BUS-02'));
 
   return (
     <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
@@ -37,6 +70,104 @@ export default function DriverSafetyPage() {
               <span>🏆</span>
               <span className="text-[#00C853] font-semibold">Excellent Driver · Top 10%</span>
             </div>
+          </div>
+        </div>
+
+        {/* Real-time safety alerts */}
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Route Deviation */}
+          <div className="glass rounded-2xl p-6">
+            <h3 className="font-bold mb-4">/routes Deviation Detection</h3>
+            {deviation && deviation.isDeviated ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-3 glass-red rounded-xl">
+                  <span className="text-2xl">⚠️</span>
+                  <div>
+                    <p className="text-[#FF5722] font-bold">Route Deviation Detected</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Bus deviated {deviation.deviationDistance}m from route
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Last reported: {new Date(deviation.lastReportedAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => driverStateService.clearDeviation('BUS-03')}
+                  className="w-full border border-[#FF5722] text-[#FF5722] hover:bg-[#FF5722] hover:text-white py-2 rounded-xl text-xs transition-all"
+                >
+                  Acknowledge
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-3xl mb-2 text-[#00C853]">✅</div>
+                <p className="text-[#00C853] font-semibold">No route deviation</p>
+                <p className="text-xs text-gray-500 mt-1">Bus is on scheduled route</p>
+              </div>
+            )}
+          </div>
+
+          {/* Unauthorized Stop */}
+          <div className="glass rounded-2xl p-6">
+            <h3 className="font-bold mb-4">Unauthorized Stop Detection</h3>
+            {unauthorizedStop && !unauthorizedStop.resolvedAt ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 p-3 glass-red rounded-xl">
+                  <span className="text-2xl">🛑</span>
+                  <div>
+                    <p className="text-[#FF5722] font-bold">Unauthorized Stop Detected</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Bus stopped for {unauthorizedStop.stopDuration}s at ({unauthorizedStop.location.lat.toFixed(4)}, {unauthorizedStop.location.lng.toFixed(4)})
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Detected: {new Date(unauthorizedStop.detectedAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => driverStateService.clearUnauthorizedStop('BUS-02')}
+                  className="w-full border border-[#FF5722] text-[#FF5722] hover:bg-[#FF5722] hover:text-white py-2 rounded-xl text-xs transition-all"
+                >
+                  Acknowledge
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="text-3xl mb-2 text-[#00C853]">✅</div>
+                <p className="text-[#00C853] font-semibold">No unauthorized stops</p>
+                <p className="text-xs text-gray-500 mt-1">All stops are authorized</p>
+              </div>
+            )}
+          </div>
+
+          {/* Geofencing Alerts */}
+          <div className="glass rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold">Geofencing Alerts</h3>
+              <span className="text-xs bg-[#FF5722]/20 text-[#FF5722] px-2 py-1 rounded-full">
+                {unreadAlerts.length} Unread
+              </span>
+            </div>
+            {geofenceAlerts.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="text-3xl mb-2 text-[#00C853]">✅</div>
+                <p className="text-[#00C853] font-semibold">No geofence alerts</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {geofenceAlerts.slice(0, 3).map(alert => (
+                  <div key={alert.id} className={`p-3 rounded-xl text-sm ${alert.read ? 'glass' : 'glass-red'}`}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span>{alert.alertType === 'geofence_entry' ? '🚪' : '🚪'}</span>
+                      <p className="font-semibold text-white">{alert.geofenceName}</p>
+                      <span className="text-xs text-gray-500 ml-auto">{new Date(alert.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                    <p className="text-xs text-gray-400">{alert.busId}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

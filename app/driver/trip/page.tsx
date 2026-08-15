@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
+import { JourneyTimeline } from '@/components/journey-timeline/JourneyTimeline';
 import { mockBuses, mockRoutes } from '@/lib/mockData';
 
 const navItems = [
@@ -77,60 +78,42 @@ export default function TripPage() {
           )}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Map */}
-          <div className="lg:col-span-2">
-            <div className="glass rounded-2xl p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-white">Live GPS Location</h3>
-                {tripActive && <span className="text-xs text-[#00C853] glass-green px-2 py-1 rounded-full animate-pulse">Sharing Location</span>}
-              </div>
-              <div className="relative w-full h-[400px] rounded-xl overflow-hidden bg-gray-100">
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: 'linear-gradient(to bottom, #ecfdf5, #d1fae5)',
-                  }}
-                >
-                  <div className="absolute inset-0 opacity-10" 
-                    style={{
-                      backgroundImage: `
-                        linear-gradient(#10b981 1px, transparent 1px),
-                        linear-gradient(90deg, #10b981 1px, transparent 1px)
-                      `,
-                      backgroundSize: '40px 40px'
-                    }}
-                  />
-                  
-                  {/* Render bus marker */}
-                  <div
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2"
-                    style={{
-                      left: '50%',
-                      top: '50%',
-                    }}
-                  >
-                    <div className="relative">
-                      <div className="absolute inset-0 bg-green-500 rounded-full opacity-30 animate-ping" style={{width: '40px', height: '40px'}} />
-                      <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center shadow-lg text-lg">
-                        🚌
-                      </div>
-                    </div>
-                  </div>
+        {/* Journey Timeline */}
+        {tripActive && (
+          <div className="grid lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <JourneyTimeline
+                busId={myBus.id}
+                tripActive={tripActive}
+                tripDuration={1800} // 30 minutes
+                currentStopIndex={currentStop}
+                totalStops={myRoute.stops.length}
+              />
+            </div>
+            
+            {/* Map */}
+            <div className="lg:col-span-2">
+              <div className="glass rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-white">Live GPS Location</h3>
+                  {tripActive && <span className="text-xs text-[#00C853] glass-green px-2 py-1 rounded-full animate-pulse">Sharing Location</span>}
                 </div>
+                <MapMock buses={[{...myBus, lat:busPos.lat, lng:busPos.lng}]} route={myRoute} height={380}/>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Stop progress */}
+        {/* Stop progress (when not active) */}
+        {!tripActive && (
           <div className="glass rounded-2xl p-6">
-            <h3 className="font-bold mb-4">Stop Progress</h3>
-            <div className="space-y-3">
+            <h3 className="font-bold mb-4">Stop Progress (Trip Not Active)</h3>
+            <div className="space-y-3 opacity-50">
               {myRoute.stops.map((stop, i) => (
                 <div key={stop.name} className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                     i < currentStop ? 'bg-[#00C853] text-black' :
-                    i === currentStop ? 'bg-[#FFD700] text-black animate-pulse' :
+                    i === currentStop ? 'bg-[#FFD700] text-black' :
                     'bg-white/10 text-gray-500'
                   }`}>
                     {i < currentStop ? '✓' : i+1}
@@ -139,14 +122,11 @@ export default function TripPage() {
                     <div className={`text-sm font-medium ${i <= currentStop ? 'text-white' : 'text-gray-500'}`}>{stop.name}</div>
                     <div className="text-xs text-gray-600">{stop.time}</div>
                   </div>
-                  {i === currentStop && tripActive && (
-                    <span className="text-xs text-[#FFD700] font-bold glass-gold px-2 py-1 rounded-full">Current</span>
-                  )}
                 </div>
               ))}
             </div>
           </div>
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );

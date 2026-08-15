@@ -68,7 +68,7 @@ export default function ParentNotificationsPage() {
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all capitalize ${filter===f ? 'bg-[#00C853] text-black' : 'glass text-gray-400 hover:text-white'}`}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${filter===f ? 'bg-[#00C853] text-black' : 'glass text-gray-400 hover:text-white'}`}
             >
               {f.replace('_', ' ')}
             </button>
