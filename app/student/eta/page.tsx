@@ -5,6 +5,7 @@ import { ETACard, TrafficBadge, StatusBadge, ArrivalCountdown, DelayIndicator, f
 import { useETA } from '@/features/eta/hooks/useETA';
 import { useNotifications } from '@/features/notifications';
 import { notificationService } from '@/features/notifications';
+import { gpsService } from '@/features/gps-tracking/services/GPSService';
 
 const navItems = [
   { href:'/student',          icon:'🏠', label:'Dashboard' },
@@ -19,6 +20,10 @@ export default function ETAPage() {
   const { busStates, isLoading, isPlaying } = useETA('BUS-01');
   const [busPos, setBusPos] = useState({ lat: 11.0168, lng: 76.9558 });
   const [alarmMin, setAlarmMin] = useState<number|null>(null);
+  const [liveGPSData, setLiveGPSData] = useState<any>(null);
+  const [trafficCondition, setTrafficCondition] = useState<any>(null);
+  const [nextStopETA, setNextStopETA] = useState<any>(null);
+  const [routeProgress, setRouteProgress] = useState<any>(null);
   const [alarmSet, setAlarmSet] = useState(false);
   const [tick, setTick] = useState(0);
   const { markAllAsRead } = useNotifications();
@@ -26,6 +31,44 @@ export default function ETAPage() {
   
   const currentBusState = busStates[0];
   const previousDelayRef = useRef<Record<string, { minutes: number; reason: string }>>({});
+
+  // Subscribe to live GPS updates
+  useEffect(() => {
+    const unsubscribe = gpsService.subscribeToUpdates('BUS-01', (position) => {
+      setLiveGPSData(position);
+      setBusPos({ lat: position.lat, lng: position.lng });
+    });
+    
+    // Get initial traffic condition
+    const traffic = gpsService.getTrafficCondition('BUS-01');
+    setTrafficCondition(traffic);
+
+    // Get initial next-stop ETA and route progress
+    const eta = gpsService.calculateETA('BUS-01');
+    setNextStopETA(eta?.nextStopETA);
+    const progress = gpsService.getRouteProgress('BUS-01');
+    setRouteProgress(progress);
+
+    // Start GPS simulation if not already running
+    gpsService.startSimulation();
+
+    // Update periodically
+    const interval = setInterval(() => {
+      const updatedTraffic = gpsService.getTrafficCondition('BUS-01');
+      setTrafficCondition(updatedTraffic);
+      
+      const updatedEta = gpsService.calculateETA('BUS-01');
+      setNextStopETA(updatedEta?.nextStopETA);
+      
+      const updatedProgress = gpsService.getRouteProgress('BUS-01');
+      setRouteProgress(updatedProgress);
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
+  }, []);
   
   // Follow the bus by default for demo purposes
   useEffect(() => {
