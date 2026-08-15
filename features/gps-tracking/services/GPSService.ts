@@ -1,7 +1,7 @@
 // GPS Service - High-level service layer for GPS operations
 // Handles business logic, simulation, and state management
 
-import { IGPSRepository, Bus, BusRoute, GPSPosition, VehicleStatus, MapViewState, TrackingControlsState } from '../types/index';
+import { IGPSRepository, Bus, BusRoute, GPSPosition, VehicleStatus, MapViewState, TrackingControlsState, TrafficCondition, LiveBusState } from '../types/index';
 import { gpsRepository } from './GPSRepository';
 import { mockRoutes } from '../mock/routes';
 import { mockBuses } from '../mock/vehicles';
@@ -19,6 +19,8 @@ class GPSService {
   private busHistory: Map<string, GPSPosition[]> = new Map();
   private busPositions: Map<string, GPSPosition> = new Map();
   private currentRouteIndex: Map<string, number> = new Map();
+  private liveBusStates: Map<string, LiveBusState> = new Map();
+  private trafficConditions: Map<string, TrafficCondition> = new Map();
   private mapViewState: MapViewState = {
     center: { lat: 11.0168, lng: 76.9558 },
     zoom: 14,
@@ -41,6 +43,7 @@ class GPSService {
     this.updateInterval = updateInterval;
     this.initializeBusPositionsFromRepository();
     this.initializeBusHistory();
+    this.initializeLiveBusStates();
   }
 
   private initializeBusPositionsFromRepository() {
@@ -65,6 +68,67 @@ class GPSService {
     mockBuses.forEach(bus => {
       this.busHistory.set(bus.id, []);
     });
+  }
+
+  private initializeLiveBusStates() {
+    // Initialize live bus states with traffic conditions
+    mockBuses.forEach(bus => {
+      const position = this.busPositions.get(bus.id);
+      if (position) {
+        const trafficCondition = this.generateTrafficCondition();
+        this.trafficConditions.set(bus.id, trafficCondition);
+        
+        const liveState: LiveBusState = {
+          busId: bus.id,
+          position,
+          lastSeen: Date.now(),
+          driverId: bus.driverId,
+          trafficCondition,
+        };
+        this.liveBusStates.set(bus.id, liveState);
+      }
+    });
+  }
+
+  private generateTrafficCondition(): TrafficCondition {
+    // Simulated traffic condition - can be replaced with real traffic API
+    const rand = Math.random();
+    let state: 'clear' | 'moderate' | 'heavy' = 'clear';
+    let factor = 1.0;
+    let reason: string | undefined;
+
+    if (rand > 0.9) {
+      state = 'heavy';
+      factor = 0.4;
+      reason = 'Heavy congestion';
+    } else if (rand > 0.7) {
+      state = 'moderate';
+      factor = 0.7;
+      reason = 'Moderate traffic';
+    }
+
+    return {
+      state,
+      factor,
+      reason,
+      lastUpdated: Date.now(),
+    };
+  }
+
+  private updateTrafficCondition(busId: string) {
+    // Update traffic condition periodically (simulated)
+    const rand = Math.random();
+    if (rand > 0.95) { // 5% chance to change traffic state
+      const newCondition = this.generateTrafficCondition();
+      this.trafficConditions.set(busId, newCondition);
+      
+      // Update live bus state
+      const liveState = this.liveBusStates.get(busId);
+      if (liveState) {
+        liveState.trafficCondition = newCondition;
+        this.liveBusStates.set(busId, liveState);
+      }
+    }
   }
 
   // Start/Stop simulation
@@ -213,7 +277,7 @@ class GPSService {
     return Math.round(distance);
   }
 
-  calculateETA(busId: string): { etaSeconds: number; etaText: string } {
+  calculateETA(busId: string, targetStopIndex?: number): { etaSeconds: number; etaText: string; trafficCondition?: TrafficCondition; nextStopETA?: { etaSeconds: number; etaText: string } } {
     const position = this.getBusPosition(busId);
     const bus = mockBuses.find(b => b.id === busId);
     
@@ -233,19 +297,35 @@ class GPSService {
     
     // Calculate remaining distance based on current route index
     const currentIndex = this.currentRouteIndex.get(busId) || 0;
-    const stopsRemaining = route ? route.stops.length - 1 - currentIndex : 5;
+    const targetIndex = targetStopIndex !== undefined ? targetStopIndex : route?.stops.length - 1 || 4;
+    const stopsRemaining = targetIndex - currentIndex;
     const remainingDistance = (stopsRemaining / (route?.stops.length - 1 || 5)) * totalDistance;
     
-    // Add traffic delay (mock)
-    const trafficDelay = Math.random() > 0.7 ? 120 : 0; // 30% chance of 2 minute delay
+    // Get traffic condition
+    const trafficCondition = this.trafficConditions.get(busId);
+    const trafficFactor = trafficCondition?.factor || 1.0;
     
-    // Calculate ETA
-    const travelTime = (remainingDistance / (currentSpeed * 1000 / 3600)); // Convert to seconds
-    const totalTime = travelTime + trafficDelay;
+    // Calculate ETA with traffic factor based on route segment
+    const baseSpeed = currentSpeed * 1000 / 3600; // Convert km/h to m/s
+    const adjustedSpeed = baseSpeed * trafficFactor;
+    const travelTime = remainingDistance / adjustedSpeed; // Convert to seconds
+    
+    // Calculate ETA to next stop if target is not the next stop
+    let nextStopETA;
+    if (targetIndex > currentIndex + 1) {
+      const nextStopDistance = (1 / (route?.stops.length - 1 || 5)) * totalDistance;
+      const nextStopTime = nextStopDistance / adjustedSpeed;
+      nextStopETA = {
+        etaSeconds: Math.round(nextStopTime),
+        etaText: this.formatDuration(Math.round(nextStopTime))
+      };
+    }
     
     return {
-      etaSeconds: Math.round(totalTime),
-      etaText: this.formatDuration(Math.round(totalTime)),
+      etaSeconds: Math.round(travelTime),
+      etaText: this.formatDuration(Math.round(travelTime)),
+      trafficCondition,
+      nextStopETA
     };
   }
 
@@ -338,6 +418,67 @@ class GPSService {
   // Fleet status
   async getFleetStatus() {
     return this.repository.getFleetStatus();
+  }
+
+  // Update bus position (for external GPS updates)
+  updateBusPosition(busId: string, position: GPSPosition, driverId?: string, activeTripId?: string): void {
+    this.busPositions.set(busId, position);
+    
+    const liveState = this.liveBusStates.get(busId);
+    if (liveState) {
+      liveState.position = position;
+      liveState.lastSeen = Date.now();
+      if (driverId) liveState.driverId = driverId;
+      if (activeTripId) liveState.activeTripId = activeTripId;
+      this.liveBusStates.set(busId, liveState);
+    }
+    
+    this.updateBusHistory(busId, position);
+  }
+
+  // Get route progress for a bus
+  getRouteProgress(busId: string): { currentStopIndex: number; completedStops: number; remainingStops: number; progressPercentage: number; currentStop?: any; nextStop?: any } {
+    const currentIndex = this.currentRouteIndex.get(busId) || 0;
+    const bus = mockBuses.find(b => b.id === busId);
+    const route = bus ? mockRoutes[bus.routeId as keyof typeof mockRoutes] : null;
+    
+    if (!route) {
+      return {
+        currentStopIndex: currentIndex,
+        completedStops: currentIndex,
+        remainingStops: 0,
+        progressPercentage: 0
+      };
+    }
+
+    const totalStops = route.stops.length;
+    const completedStops = currentIndex;
+    const remainingStops = totalStops - 1 - currentIndex;
+    const progressPercentage = (currentIndex / (totalStops - 1)) * 100;
+
+    return {
+      currentStopIndex: currentIndex,
+      completedStops,
+      remainingStops,
+      progressPercentage: Math.round(progressPercentage),
+      currentStop: route.stops[currentIndex],
+      nextStop: route.stops[currentIndex + 1]
+    };
+  }
+
+  // Get traffic condition for a bus
+  getTrafficCondition(busId: string): TrafficCondition | null {
+    return this.trafficConditions.get(busId) || null;
+  }
+
+  // Get live bus state
+  getLiveBusState(busId: string): LiveBusState | null {
+    return this.liveBusStates.get(busId) || null;
+  }
+
+  // Get all live bus states
+  getAllLiveBusStates(): LiveBusState[] {
+    return Array.from(this.liveBusStates.values());
   }
 }
 

@@ -165,3 +165,22 @@ export interface IGPSRepository {
     averageFleetSpeed: number;
   }>;
 }
+
+// === Traffic State ===
+export type TrafficState = 'clear' | 'moderate' | 'heavy';
+
+export interface TrafficCondition {
+  state: TrafficState;
+  factor: number; // Speed multiplier (1.0 = clear, 0.7 = moderate, 0.4 = heavy)
+  reason?: string;
+  lastUpdated: number;
+}
+
+export interface LiveBusState {
+  busId: string;
+  position: GPSPosition;
+  lastSeen: number;
+  activeTripId?: string;
+  driverId?: string;
+  trafficCondition: TrafficCondition;
+}

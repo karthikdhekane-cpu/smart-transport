@@ -4,6 +4,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
 import { mockBuses, mockRoutes, mockStudents } from '@/lib/mockData';
 import { useETA } from '@/features/eta';
+import { gpsService } from '@/features/gps-tracking/services/GPSService';
 
 const navItems = [
   { href:'/parent',          icon:'🏠', label:'Dashboard' },
@@ -16,25 +17,61 @@ export default function ParentTrackingPage() {
   const childBus = mockBuses.find(b => b.id === child.busId);
   const childRoute = mockRoutes.find(r => r.id === 'route-a');
   
-  const { busStates, isLoading } = useETA(childBus?.id);
-  const currentBusState = busStates[0];
-  
+  const [liveGPSData, setLiveGPSData] = useState<any>(null);
+  const [etaData, setEtaData] = useState<any>(null);
+  const [trafficCondition, setTrafficCondition] = useState<any>(null);
+  const [nextStopETA, setNextStopETA] = useState<any>(null);
+  const [routeProgress, setRouteProgress] = useState<any>(null);
   const [busPos, setBusPos] = useState({ lat: childBus?.lat || 11.0168, lng: childBus?.lng || 76.9558 });
   const [speed, setSpeed] = useState(childBus?.speed || 42);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setBusPos(prev => ({
-        lat: prev.lat + (Math.random() - 0.5) * 0.0004,
-        lng: prev.lng + (Math.random() - 0.5) * 0.0004,
-      }));
-      setSpeed(Math.round(35 + Math.random() * 20));
-    }, 2000);
-    return () => clearInterval(t);
-  }, []);
+    if (!childBus) return;
 
-  const etaMinutes = currentBusState 
-    ? Math.round(currentBusState.currentETA.seconds / 60)
+    // Subscribe to live GPS updates
+    const unsubscribe = gpsService.subscribeToUpdates(childBus.id, (position) => {
+      setLiveGPSData(position);
+      setBusPos({ lat: position.lat, lng: position.lng });
+      setSpeed(position.speed || childBus.speed);
+    });
+
+    // Get initial ETA and next-stop ETA
+    const eta = gpsService.calculateETA(childBus.id);
+    setEtaData(eta);
+    setNextStopETA(eta?.nextStopETA);
+
+    // Get initial traffic condition
+    const traffic = gpsService.getTrafficCondition(childBus.id);
+    setTrafficCondition(traffic);
+
+    // Get initial route progress
+    const progress = gpsService.getRouteProgress(childBus.id);
+    setRouteProgress(progress);
+
+    // Start GPS simulation
+    gpsService.startSimulation();
+
+    // Update periodically
+    const interval = setInterval(() => {
+      const updatedEta = gpsService.calculateETA(childBus.id);
+      setEtaData(updatedEta);
+      setNextStopETA(updatedEta?.nextStopETA);
+      
+      const updatedTraffic = gpsService.getTrafficCondition(childBus.id);
+      setTrafficCondition(updatedTraffic);
+      
+      const updatedProgress = gpsService.getRouteProgress(childBus.id);
+      setRouteProgress(updatedProgress);
+    }, 3000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
+  }, [childBus]);
+
+  const etaMinutes = etaData 
+    ? Math.round(etaData.etaSeconds / 60)
     : 8;
 
   return (
@@ -105,8 +142,8 @@ export default function ParentTrackingPage() {
             </div>
             <div className="bg-[#f8fafc] rounded-xl p-4">
               <div className="text-xs text-gray-500 mb-1">Bus Status</div>
-              <div className="text-2xl font-black text-[#00C853]">{currentBusState?.status || 'On Time'}</div>
-              <div className="text-xs text-gray-600">{currentBusState?.traffic?.config?.name || 'Normal traffic'}</div>
+              <div className="text-2xl font-black text-[#00C853]">{trafficCondition?.state === 'clear' ? 'On Time' : trafficCondition?.state || 'On Time'}</div>
+              <div className="text-xs text-gray-600">{trafficCondition?.reason || 'Normal traffic'}</div>
             </div>
           </div>
         </div>

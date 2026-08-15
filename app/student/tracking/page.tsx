@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
 import { mockBuses, mockRoutes } from '@/lib/mockData';
+import { gpsService } from '@/features/gps-tracking/services/GPSService';
 
 const navItems = [
   { href:'/student',          icon:'🏠', label:'Dashboard' },
@@ -16,18 +17,47 @@ const navItems = [
 export default function TrackingPage() {
   const myBus = mockBuses[0];
   const myRoute = mockRoutes[0];
+  const [liveGPSData, setLiveGPSData] = useState<any>(null);
+  const [etaData, setEtaData] = useState<any>(null);
+  const [nextStopETA, setNextStopETA] = useState<any>(null);
+  const [routeProgress, setRouteProgress] = useState<any>(null);
   const [busPos, setBusPos] = useState({ lat: myBus.lat, lng: myBus.lng });
   const [speed, setSpeed] = useState(myBus.speed);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      setBusPos(prev => ({
-        lat: prev.lat + (Math.random() - 0.5) * 0.0004,
-        lng: prev.lng + (Math.random() - 0.5) * 0.0004,
-      }));
-      setSpeed(Math.round(35 + Math.random() * 20));
-    }, 2000);
-    return () => clearInterval(t);
+    // Subscribe to live GPS updates
+    const unsubscribe = gpsService.subscribeToUpdates(myBus.id, (position) => {
+      setLiveGPSData(position);
+      setBusPos({ lat: position.lat, lng: position.lng });
+      setSpeed(position.speed || myBus.speed);
+    });
+
+    // Get initial ETA and next-stop ETA
+    const eta = gpsService.calculateETA(myBus.id);
+    setEtaData(eta);
+    setNextStopETA(eta?.nextStopETA);
+
+    // Get initial route progress
+    const progress = gpsService.getRouteProgress(myBus.id);
+    setRouteProgress(progress);
+
+    // Start GPS simulation
+    gpsService.startSimulation();
+
+    // Update periodically
+    const interval = setInterval(() => {
+      const updatedEta = gpsService.calculateETA(myBus.id);
+      setEtaData(updatedEta);
+      setNextStopETA(updatedEta?.nextStopETA);
+      
+      const updatedProgress = gpsService.getRouteProgress(myBus.id);
+      setRouteProgress(updatedProgress);
+    }, 3000);
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   return (
