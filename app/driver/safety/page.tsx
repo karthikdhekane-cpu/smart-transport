@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { geofenceService } from '@/features/geofencing/services/GeofenceService';
 import { driverStateService } from '@/features/driver-state/services/DriverStateService';
+import { useDriverBehaviour } from '@/features/ai-intelligence';
 
 const navItems = [
   { href:'/driver',          icon:'🏠', label:'Dashboard' },
@@ -26,14 +27,23 @@ const mockUnauthorizedStop = {
 };
 
 export default function DriverSafetyPage() {
-  const score = 94;
-  const metrics = [
+  const { results, isLoading: behaviourLoading } = useDriverBehaviour('D001');
+  const behaviour = results[0];
+  const score = behaviour?.metrics.safetyScore ?? 94;
+  const metrics = behaviour ? [
+    { label:'Speed Compliance', value: behaviour.metrics.speedCompliance, icon:'🚀' },
+    { label:'Route Compliance', value: behaviour.metrics.routeCompliance, icon:'🗺️' },
+    { label:'Stop Compliance', value: behaviour.metrics.stopCompliance, icon:'🛑' },
+    { label:'Alert Frequency', value: behaviour.metrics.alertFrequency, icon:'🚨' },
+    { label:'Overall Rating', value: score, icon:'🛡️' },
+  ] : [
     { label:'Speed Compliance', value:97, icon:'🚀' },
-    { label:'Smooth Braking', value:91, icon:'🛑' },
-    { label:'Smooth Acceleration', value:95, icon:'⚡' },
-    { label:'Turn Safety', value:98, icon:'↩️' },
-    { label:'Idle Management', value:88, icon:'⏸️' },
+    { label:'Route Compliance', value:100, icon:'🗺️' },
+    { label:'Stop Compliance', value:100, icon:'🛑' },
+    { label:'Alert Frequency', value:92, icon:'🚨' },
+    { label:'Overall Rating', value: score, icon:'🛡️' },
   ];
+  const ratingLabel = behaviour?.metrics.overallRating.replace('_', ' ') ?? 'excellent';
 
   // Geofencing alerts
   const [geofenceAlerts, setGeofenceAlerts] = useState(geofenceService.getGeofenceAlerts());
@@ -45,11 +55,11 @@ export default function DriverSafetyPage() {
     setUnreadAlerts(geofenceService.getUnreadGeofenceAlerts());
   }, []);
 
-  // Route deviation state
-  const [deviation, setDeviation] = useState(driverStateService.getRouteDeviation('BUS-03'));
+  // Route deviation state (driver's bus: BUS-01)
+  const [deviation, setDeviation] = useState(driverStateService.getRouteDeviation('BUS-01'));
 
-  // Unauthorized stop state
-  const [unauthorizedStop, setUnauthorizedStop] = useState(driverStateService.getUnauthorizedStop('BUS-02'));
+  // Unauthorized stop state (driver's bus: BUS-01)
+  const [unauthorizedStop, setUnauthorizedStop] = useState(driverStateService.getUnauthorizedStop('BUS-01'));
 
   return (
     <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
@@ -68,8 +78,11 @@ export default function DriverSafetyPage() {
             <div className="text-2xl text-gray-300">/ 100</div>
             <div className="mt-4 inline-flex items-center gap-2 glass-green rounded-full px-4 py-2 text-sm">
               <span>🏆</span>
-              <span className="text-[#00C853] font-semibold">Excellent Driver · Top 10%</span>
+              <span className="text-[#00C853] font-semibold capitalize">{ratingLabel} Driver</span>
             </div>
+            {behaviour?.reasons[0] && (
+              <p className="text-xs text-gray-400 mt-3">{behaviour.reasons[0]}</p>
+            )}
           </div>
         </div>
 
@@ -77,7 +90,7 @@ export default function DriverSafetyPage() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Route Deviation */}
           <div className="glass rounded-2xl p-6">
-            <h3 className="font-bold mb-4">/routes Deviation Detection</h3>
+            <h3 className="font-bold mb-4">Route Deviation Detection</h3>
             {deviation && deviation.isDeviated ? (
               <div className="space-y-3">
                 <div className="flex items-start gap-3 p-3 glass-red rounded-xl">
@@ -93,7 +106,10 @@ export default function DriverSafetyPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => driverStateService.clearDeviation('BUS-03')}
+                  onClick={() => {
+                    driverStateService.clearDeviation('BUS-01');
+                    setDeviation(driverStateService.getRouteDeviation('BUS-01'));
+                  }}
                   className="w-full border border-[#FF5722] text-[#FF5722] hover:bg-[#FF5722] hover:text-white py-2 rounded-xl text-xs transition-all"
                 >
                   Acknowledge
@@ -126,7 +142,10 @@ export default function DriverSafetyPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => driverStateService.clearUnauthorizedStop('BUS-02')}
+                  onClick={() => {
+                    driverStateService.clearUnauthorizedStop('BUS-01');
+                    setUnauthorizedStop(driverStateService.getUnauthorizedStop('BUS-01'));
+                  }}
                   className="w-full border border-[#FF5722] text-[#FF5722] hover:bg-[#FF5722] hover:text-white py-2 rounded-xl text-xs transition-all"
                 >
                   Acknowledge
@@ -174,6 +193,12 @@ export default function DriverSafetyPage() {
         {/* Metric breakdown */}
         <div className="glass rounded-2xl p-6">
           <h3 className="font-bold mb-4">Score Breakdown</h3>
+          {behaviourLoading && <p className="text-xs text-gray-500 mb-3">Computing from live service data…</p>}
+          {behaviour?.dataSources && (
+            <p className="text-[10px] text-gray-500 mb-3">
+              Braking/turn metrics unavailable (no IMU sensor). Speed: {behaviour.dataSources.speed}, deviations: {behaviour.dataSources.deviations}.
+            </p>
+          )}
           <div className="space-y-4">
             {metrics.map(m => (
               <div key={m.label}>

@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { ETACard, TrafficBadge, StatusBadge } from '@/features/eta';
 import { useETA } from '@/features/eta/hooks/useETA';
+import { useDriverBehaviour } from '@/features/ai-intelligence';
+import { mockDrivers } from '@/lib/mockData';
 
 const navItems = [
   { href:'/driver',          icon:'🏠', label:'Dashboard' },
@@ -20,15 +22,20 @@ const weeklyData = [
   { day:'Sat', score:95, trips:1, speed:41 },
 ];
 
-const events = [
-  { type:'harsh_brake', count:2, label:'Harsh Braking', icon:'🛑', color:'text-red-400' },
-  { type:'overspeed',   count:1, label:'Over-Speeding', icon:'🚀', color:'text-[#FFD700]' },
-  { type:'idle',        count:3, label:'Long Idle',     icon:'⏸️', color:'text-blue-400' },
-  { type:'rash_turn',   count:0, label:'Rash Turns',    icon:'↩️', color:'text-[#00C853]' },
-];
+const eventIcons: Record<string, { icon: string; color: string }> = {
+  overspeed: { icon: '🚀', color: 'text-[#FFD700]' },
+  idle: { icon: '⏸️', color: 'text-blue-400' },
+  route_deviation: { icon: '⚠️', color: 'text-red-400' },
+  unauthorized_stop: { icon: '🛑', color: 'text-red-400' },
+  geofence_violation: { icon: '🚪', color: 'text-[#FFD700]' },
+  alert: { icon: '🚨', color: 'text-red-400' },
+};
 
 export default function DriverAnalyticsPage() {
   const { busStates, isLoading, isPlaying } = useETA('BUS-01');
+  const { results, isLoading: behaviourLoading } = useDriverBehaviour('D001');
+  const behaviour = results[0];
+  const driver = mockDrivers.find(d => d.id === 'D001');
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -82,10 +89,10 @@ export default function DriverAnalyticsPage() {
         {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { l:'Safety Score', v:'94%', icon:'🛡️', c:'green' },
-            { l:'Total Trips', v:'1,240', icon:'🗺️', c:'gold' },
-            { l:'On-Time Rate', v:'96%', icon:'⏱️', c:'green' },
-            { l:'Avg Speed', v:'42 km/h', icon:'🚀', c:'gold' },
+            { l:'Safety Score', v:`${behaviour?.metrics.safetyScore ?? driver?.safetyScore ?? 94}%`, icon:'🛡️', c:'green' },
+            { l:'Total Trips', v:(driver?.trips ?? 1240).toLocaleString(), icon:'🗺️', c:'gold' },
+            { l:'Route Compliance', v:`${behaviour?.metrics.routeCompliance ?? 100}%`, icon:'⏱️', c:'green' },
+            { l:'Avg Speed', v:`${Math.round(currentBusState?.speed ?? 42)} km/h`, icon:'🚀', c:'gold' },
           ].map(s => (
             <div key={s.l} className={`${s.c==='gold'?'glass-gold':'glass-green'} rounded-2xl p-4 hover-card`}>
               <div className="text-2xl mb-2">{s.icon}</div>
@@ -112,21 +119,36 @@ export default function DriverAnalyticsPage() {
           </div>
         </div>
 
-        {/* Behavior events */}
+        {/* Behavior events — from AI behaviour service (live/recorded data only) */}
         <div className="glass rounded-2xl p-6">
-          <h3 className="font-bold mb-4">Driver Behavior Events (This Week)</h3>
+          <h3 className="font-bold mb-4">Driver Behavior Events</h3>
+          <p className="text-gray-500 text-xs mb-4">
+            Based on speed, deviations, stops, and alerts. Braking/turn sensors unavailable.
+          </p>
+          {behaviourLoading ? (
+            <p className="text-gray-400 text-sm">Analyzing behaviour...</p>
+          ) : behaviour && behaviour.events.length > 0 ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {events.map(e => (
+            {behaviour.events.map(e => {
+              const style = eventIcons[e.type] ?? { icon: '📋', color: 'text-gray-400' };
+              return (
               <div key={e.type} className="glass rounded-xl p-4 text-center hover-card">
-                <div className="text-3xl mb-2">{e.icon}</div>
-                <div className={`text-2xl font-black ${e.color}`}>{e.count}</div>
+                <div className="text-3xl mb-2">{style.icon}</div>
+                <div className={`text-2xl font-black ${style.color}`}>{e.count}</div>
                 <div className="text-xs text-gray-400 mt-1">{e.label}</div>
-                <div className={`text-xs mt-1 ${e.count===0?'text-[#00C853]':e.count<=2?'text-[#FFD700]':'text-red-400'}`}>
-                  {e.count===0?'Perfect':'Detected'}
-                </div>
+                <div className="text-[10px] mt-1 text-gray-500">{e.source} data</div>
               </div>
-            ))}
+            );})}
           </div>
+          ) : (
+            <div className="text-center py-6 text-[#00C853]">
+              <div className="text-3xl mb-2">✅</div>
+              <p className="text-sm font-semibold">No behaviour events detected</p>
+            </div>
+          )}
+          {behaviour?.recommendations[0] && (
+            <p className="text-xs text-[#FFD700] mt-4">{behaviour.recommendations[0]}</p>
+          )}
         </div>
 
         {/* Trip history */}

@@ -1,6 +1,7 @@
 'use client';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { mockWeeklyData, mockOccupancyData, mockStats } from '@/lib/mockData';
+import { useRouteOptimization, useDriverBehaviour } from '@/features/ai-intelligence';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -35,6 +36,9 @@ function heatColor(v: number) {
 }
 
 export default function AnalyticsPage() {
+  const { efficiencyScores, recommendations, isLoading: aiLoading } = useRouteOptimization();
+  const { results: driverResults, fleetAverage } = useDriverBehaviour();
+
   return (
     <DashboardLayout role="admin" navItems={navItems} userName="Admin">
       <div className="space-y-6">
@@ -154,20 +158,19 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Route efficiency */}
+        {/* Route efficiency — computed by AI intelligence service */}
         <div className="glass rounded-2xl p-6">
           <h3 className="font-bold mb-4">Route Efficiency Scores</h3>
+          <p className="text-gray-500 text-xs mb-4">Computed from live ETA, traffic, deviation, and occupancy data</p>
           <div className="space-y-4">
-            {[
-              { route:'Route A — Gandhipuram', score:96, trips:48, delays:2 },
-              { route:'Route B — RS Puram', score:88, trips:48, delays:6 },
-              { route:'Route C — Peelamedu', score:94, trips:48, delays:3 },
-              { route:'Route D — Singanallur', score:91, trips:44, delays:4 },
-            ].map(r => (
-              <div key={r.route} className="flex items-center gap-4 p-3 glass rounded-xl">
+            {efficiencyScores.map(r => (
+              <div key={r.routeId} className="flex items-center gap-4 p-3 glass rounded-xl">
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-white">{r.route}</div>
-                  <div className="text-xs text-gray-500">{r.trips} trips · {r.delays} delays</div>
+                  <div className="text-sm font-medium text-white">{r.routeName}</div>
+                  <div className="text-xs text-gray-500">{r.busId} · {r.trips} trips · {r.delays} delay factor(s)</div>
+                  {r.factors.length > 0 && (
+                    <div className="text-[10px] text-[#FFD700] mt-1">{r.factors.join(' · ')}</div>
+                  )}
                 </div>
                 <div className="w-32">
                   <div className="flex justify-between text-xs mb-1">
@@ -178,6 +181,69 @@ export default function AnalyticsPage() {
                     <div className="h-full bg-[#00C853] rounded-full" style={{width:`${r.score}%`}}/>
                   </div>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Route Optimization */}
+        <div className="glass rounded-2xl p-6">
+          <h3 className="font-bold mb-2">AI Route Optimization</h3>
+          <p className="text-gray-500 text-xs mb-4">
+            Deterministic intelligence engine · Fleet avg safety {fleetAverage}%
+          </p>
+          {aiLoading ? (
+            <p className="text-gray-400 text-sm">Analyzing routes...</p>
+          ) : (
+            <div className="space-y-3">
+              {recommendations.slice(0, 4).map(rec => (
+                <div key={rec.id} className="p-4 glass rounded-xl">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-white">{rec.recommendedRouteName}</div>
+                      <div className="text-xs text-gray-500">{rec.busId} · {Math.round(rec.confidence * 100)}% confidence</div>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      rec.priority === 'critical' ? 'bg-red-500/20 text-red-400' :
+                      rec.priority === 'high' ? 'bg-[#FFD700]/20 text-[#FFD700]' :
+                      'bg-[#00C853]/20 text-[#00C853]'
+                    }`}>{rec.priority}</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">{rec.reason}</p>
+                  <div className="flex flex-wrap gap-2 mt-2 text-[10px]">
+                    <span className="glass-green text-[#00C853] px-2 py-0.5 rounded-full">{rec.estimatedTimeImprovementText}</span>
+                    {rec.affectedStops.length > 0 && (
+                      <span className="text-gray-500">Stops: {rec.affectedStops.slice(0, 3).join(', ')}{rec.affectedStops.length > 3 ? '…' : ''}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Driver Behaviour Summary */}
+        <div className="glass rounded-2xl p-6">
+          <h3 className="font-bold mb-4">Driver Behaviour Analysis</h3>
+          <div className="grid md:grid-cols-2 gap-4">
+            {driverResults.map(d => (
+              <div key={d.driverId} className="glass rounded-xl p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <div className="font-semibold text-white">{d.driverName}</div>
+                    <div className="text-xs text-gray-500">{d.busId} · {d.metrics.overallRating.replace('_', ' ')}</div>
+                  </div>
+                  <div className="text-xl font-black neon-text">{d.metrics.safetyScore}</div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[10px] text-gray-400">
+                  <span>Speed: {d.metrics.speedCompliance}%</span>
+                  <span>Route: {d.metrics.routeCompliance}%</span>
+                  <span>Stops: {d.metrics.stopCompliance}%</span>
+                  <span>Alerts: {d.metrics.alertFrequency}%</span>
+                </div>
+                {d.recommendations[0] && (
+                  <p className="text-[10px] text-[#FFD700] mt-2">{d.recommendations[0]}</p>
+                )}
               </div>
             ))}
           </div>

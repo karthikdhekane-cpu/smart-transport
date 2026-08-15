@@ -2,6 +2,7 @@
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
 import { mockBuses, mockRoutes } from '@/lib/mockData';
+import { useRouteOptimization } from '@/features/ai-intelligence';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -21,6 +22,11 @@ const routes = [
 ];
 
 export default function RoutesPage() {
+  const { recommendations, isLoading } = useRouteOptimization();
+
+  const getRecommendation = (busId: string) =>
+    recommendations.find(r => r.busId === busId);
+
   return (
     <DashboardLayout role="admin" navItems={navItems} userName="Admin">
       <div className="space-y-6">
@@ -61,6 +67,25 @@ export default function RoutesPage() {
                 <button className="flex-1 glass text-gray-400 hover:text-white py-2 rounded-xl text-xs transition-all">Edit Stops</button>
                 <button className="flex-1 glass text-gray-400 hover:text-white py-2 rounded-xl text-xs transition-all">Assign Bus</button>
               </div>
+              {(() => {
+                const rec = getRecommendation(r.bus);
+                if (isLoading || !rec) return null;
+                return (
+                  <div className="mt-4 p-3 glass rounded-xl border border-[#00C853]/20">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-[#00C853]">AI Recommendation</span>
+                      <span className="text-[10px] text-gray-500">{Math.round(rec.confidence * 100)}% confidence</span>
+                    </div>
+                    <p className="text-xs text-gray-400">{rec.reason}</p>
+                    <div className="flex gap-2 mt-2 text-[10px]">
+                      <span className="text-[#FFD700]">{rec.estimatedTimeImprovementText}</span>
+                      {rec.affectedStops.length > 0 && (
+                        <span className="text-gray-500">· {rec.affectedStops.length} stop(s) affected</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           ))}
         </div>

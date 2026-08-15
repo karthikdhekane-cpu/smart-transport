@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { mockDrivers } from '@/lib/mockData';
+import { useDriverBehaviour } from '@/features/ai-intelligence';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -15,6 +16,10 @@ const navItems = [
 
 export default function DriversPage() {
   const [search, setSearch] = useState('');
+  const { results: behaviourResults, isLoading } = useDriverBehaviour();
+
+  const getBehaviour = (driverId: string) =>
+    behaviourResults.find(r => r.driverId === driverId);
   const filtered = mockDrivers.filter(d =>
     d.name.toLowerCase().includes(search.toLowerCase()) ||
     d.busId.toLowerCase().includes(search.toLowerCase())
@@ -41,7 +46,10 @@ export default function DriversPage() {
         />
 
         <div className="grid md:grid-cols-2 gap-4">
-          {filtered.map((d, i) => (
+          {filtered.map((d) => {
+            const behaviour = getBehaviour(d.id);
+            const score = behaviour?.metrics.safetyScore ?? d.safetyScore;
+            return (
             <div key={d.id} className="glass rounded-2xl p-6 hover-card">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -52,8 +60,8 @@ export default function DriversPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-lg font-black neon-text">{d.safetyScore}%</div>
-                  <div className="text-xs text-gray-500">Safety</div>
+                  <div className="text-lg font-black neon-text">{score}%</div>
+                  <div className="text-xs text-gray-500">{behaviour ? 'AI Score' : 'Safety'}</div>
                 </div>
               </div>
 
@@ -65,17 +73,27 @@ export default function DriversPage() {
                   <span>Phone</span><span className="text-white">{d.phone}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
+                  <span>Behaviour</span>
+                  <span className="text-white text-xs capitalize">
+                    {isLoading ? '…' : behaviour?.metrics.overallRating.replace('_', ' ') ?? '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between text-gray-400">
                   <span>Total Trips</span><span className="text-white">{d.trips.toLocaleString()}</span>
                 </div>
               </div>
 
+              {behaviour?.recommendations[0] && (
+                <p className="text-[10px] text-[#FFD700] mt-2">{behaviour.recommendations[0]}</p>
+              )}
+
               <div className="mt-4">
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-gray-500">Safety Score</span>
-                  <span className="neon-text">{d.safetyScore}%</span>
+                  <span className="neon-text">{score}%</span>
                 </div>
                 <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#00C853] rounded-full" style={{width:`${d.safetyScore}%`}}/>
+                  <div className="h-full bg-[#00C853] rounded-full" style={{width:`${score}%`}}/>
                 </div>
               </div>
 
@@ -84,7 +102,7 @@ export default function DriversPage() {
                 <button className="flex-1 glass text-gray-400 hover:text-white py-2 rounded-xl text-xs transition-all">Edit</button>
               </div>
             </div>
-          ))}
+          );})}
         </div>
       </div>
     </DashboardLayout>
