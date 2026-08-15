@@ -1,6 +1,5 @@
 'use client';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
 import KPIStrip from './KPIStrip';
 import FeatureSpotlight from './FeatureSpotlight';
 import ModuleCard from './ModuleCard';
@@ -96,42 +95,6 @@ export default function LandingSections() {
       description: 'Night-stop detection with automatic emergency contact triggers',
       icon: '◐',
       color: '#059669',
-    },
-  ];
-
-  // Dashboard portals
-  const portals = [
-    {
-      title: 'Student Portal',
-      label: 'Students',
-      href: '/student',
-      color: '#059669',
-      description: 'Track your bus live, get smart ETA alerts, and stay safe with one-tap SOS.',
-      features: ['Live bus tracking', 'Smart ETA alarm', 'Push notifications', 'SOS button', 'Lost & Found'],
-    },
-    {
-      title: 'Driver Portal',
-      label: 'Drivers',
-      href: '/driver',
-      color: '#d97706',
-      description: 'Manage trips, share GPS location, and monitor your safety score in real-time.',
-      features: ['Trip management', 'GPS sharing', 'Safety score', 'SOS emergency', 'Route status'],
-    },
-    {
-      title: 'Admin Panel',
-      label: 'Administrators',
-      href: '/admin',
-      color: '#3b82f6',
-      description: 'Command the entire fleet with live maps, analytics heatmaps, and emergency alerts.',
-      features: ['Fleet monitoring', 'Analytics & heatmaps', 'Driver rankings', 'Emergency alerts', 'Manage routes'],
-    },
-    {
-      title: 'Parent Portal',
-      label: 'Parents',
-      href: '/parent',
-      color: '#9C27B0',
-      description: 'Track your child, receive notifications, and monitor safety in real-time.',
-      features: ['Child tracking', 'Live notifications', 'ETA alerts', 'Safety monitoring', 'Route status'],
     },
   ];
 
@@ -616,125 +579,6 @@ export default function LandingSections() {
               ))}
             </div>
           </motion.div>
-        </div>
-      </section>
-
-      {/* DASHBOARDS SECTION - Role-based experiences */}
-      <section id="dashboards" className="py-20 lg:py-32 px-6 lg:px-16 bg-[#f8fafc]">
-        <div className="max-w-[1400px] mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="text-center mb-16 lg:mb-24"
-          >
-            <motion.p
-              initial={{ opacity: 0, letterSpacing: '0.2em' }}
-              whileInView={{ opacity: 1, letterSpacing: '0.2em' }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1, duration: 0.4 }}
-              className="text-[11px] lg:text-[13px] font-semibold tracking-[0.25em] uppercase text-[#059669]/60 mb-4"
-            >
-              Access Portals
-            </motion.p>
-
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.15, duration: 0.5 }}
-              className="font-black tracking-tight leading-[1.05] mb-4"
-              style={{ fontSize: 'clamp(2.2rem, 4vw, 3.8rem)' }}
-            >
-              Tailored for<br />
-              every role.
-            </motion.h2>
-
-            <motion.p
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="text-[16px] lg:text-[18px] text-[#64748b] max-w-2xl mx-auto"
-            >
-              Custom experiences designed specifically for students, drivers,
-              administrators, and parents.
-            </motion.p>
-          </motion.div>
-
-          {/* 4-Column Portal Cards */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
-            {portals.map((portal, i) => (
-              <motion.div
-                key={portal.title}
-                initial={{ opacity: 0, y: 32 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08, duration: 0.5 }}
-              >
-                <Link
-                  href={portal.href}
-                  className="group relative glass rounded-3xl p-6 lg:p-8 block hover:shadow-deep transition-all duration-500 hover-card border border-[#e2e8f0]"
-                >
-                  {/* Top accent */}
-                  <div
-                    className="absolute top-0 left-0 right-0 h-0.5 rounded-t-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ background: `linear-gradient(90deg, transparent, ${portal.color}45, transparent)` }}
-                  />
-
-                  {/* Background gradient */}
-                  <div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                    style={{ background: `radial-gradient(circle at 50% 0%, ${portal.color}0a, transparent 65%)` }}
-                  />
-
-                  {/* Label */}
-                  <div
-                    className="text-[11px] lg:text-[12px] font-semibold tracking-[0.18em] uppercase mb-4"
-                    style={{ color: portal.color }}
-                  >
-                    {portal.label}
-                  </div>
-
-                  {/* Title */}
-                  <h3 className="text-2xl lg:text-3xl font-bold mb-4 text-[#0f172a]">
-                    {portal.title}
-                  </h3>
-
-                  {/* Description */}
-                  <p className="text-[15px] lg:text-[16px] text-[#64748b] mb-8 leading-relaxed">
-                    {portal.description}
-                  </p>
-
-                  {/* Features */}
-                  <ul className="space-y-2.5 mb-8">
-                    {portal.features.map((feature) => (
-                      <li
-                        key={feature}
-                        className="flex items-center gap-3 text-[14px] lg:text-[15px] text-[#475569]"
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                          style={{ background: portal.color }}
-                        />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* CTA */}
-                  <div
-                    className="flex items-center gap-2 text-[14px] lg:text-[15px] font-semibold transition-all duration-300"
-                    style={{ color: portal.color }}
-                  >
-                    Open Portal
-                    <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
     </>
