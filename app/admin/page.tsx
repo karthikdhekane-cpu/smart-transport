@@ -4,6 +4,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
 import { mockBuses, mockAlerts, mockStats, mockWeeklyData, mockDrivers } from '@/lib/mockData';
 import AdminSOSAlert from '@/components/sos/AdminSOSAlert';
+import { speedMonitoringService, vehicleHealthService, driverBehaviourScoreService } from '@/features/fleet-monitoring';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -13,11 +14,19 @@ const navItems = [
   { href:'/admin/students',  icon:'🎓', label:'Students' },
   { href:'/admin/alerts',    icon:'🚨', label:'Alerts' },
   { href:'/admin/routes',    icon:'🗺️', label:'Routes' },
+  { href:'/admin/speed',     icon:'🚀', label:'Speed Monitor' },
+  { href:'/admin/driver-behaviour', icon:'🛡️', label:'Driver Behaviour' },
+  { href:'/admin/vehicle-health', icon:'🔧', label:'Vehicle Health' },
+  { href:'/admin/fuel-analytics', icon:'⛽', label:'Fuel Analytics' },
+  { href:'/admin/fleet-reports', icon:'📈', label:'Fleet Reports' },
 ];
 
 export default function AdminDashboard() {
   const [buses, setBuses] = useState(mockBuses);
   const [tick, setTick] = useState(0);
+  const [fleetSpeedSummary, setFleetSpeedSummary] = useState<any>(null);
+  const [fleetHealthSummary, setFleetHealthSummary] = useState<any>(null);
+  const [driverRanking, setDriverRanking] = useState<any[]>([]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -32,7 +41,17 @@ export default function AdminDashboard() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    // Load fleet monitoring data
+    setFleetSpeedSummary(speedMonitoringService.getFleetSpeedSummary());
+    setFleetHealthSummary(vehicleHealthService.getFleetHealthSummary());
+    setDriverRanking(driverBehaviourScoreService.getDriverRanking());
+  }, [tick]);
+
   const criticalAlerts = mockAlerts.filter(a => a.severity === 'critical');
+  const overspeedingVehicles = speedMonitoringService.getOverspeedingVehicles();
+  const criticalVehicles = vehicleHealthService.getCriticalVehicles();
+  const driversRequiringAttention = driverBehaviourScoreService.getDriversRequiringAttention();
 
   return (
     <DashboardLayout role="admin" navItems={navItems} userName="Admin">
@@ -62,17 +81,18 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* KPI cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Enhanced KPI cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           {[
             { l:'Total Buses', v:mockStats.totalBuses, icon:'🚌', c:'green', sub:`${mockStats.activeBuses} active` },
             { l:'Students', v:mockStats.totalStudents, icon:'🎓', c:'gold', sub:'Tracked today' },
             { l:'On-Time Rate', v:`${mockStats.onTimeRate}%`, icon:'⏱️', c:'green', sub:'This week' },
             { l:'Safety Score', v:`${mockStats.safetyScore}%`, icon:'🛡️', c:'gold', sub:'Fleet avg' },
+            { l:'Overspeeding', v:fleetSpeedSummary?.overspeedCount || 0, icon:'🚀', c:'red', sub:'Vehicles' },
           ].map(s => (
-            <div key={s.l} className={`${s.c==='gold'?'glass-gold':'glass-green'} rounded-2xl p-5 hover-card`}>
+            <div key={s.l} className={`${s.c==='gold'?'glass-gold':s.c==='red'?'glass-red':'glass-green'} rounded-2xl p-5 hover-card`}>
               <div className="text-3xl mb-2">{s.icon}</div>
-              <div className={`text-2xl font-black ${s.c==='gold'?'gold-text':'neon-text'}`}>{s.v}</div>
+              <div className={`text-2xl font-black ${s.c==='gold'?'gold-text':s.c==='red'?'text-red-400':'neon-text'}`}>{s.v}</div>
               <div className="text-xs text-gray-400 mt-0.5">{s.l}</div>
               <div className="text-xs text-gray-600">{s.sub}</div>
             </div>
@@ -147,10 +167,62 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Alerts panel */}
+          {/* Enhanced Alerts panel */}
           <div className="glass rounded-2xl p-4">
             <h2 className="font-bold text-white mb-4">🚨 Live Alerts</h2>
             <div className="space-y-3">
+              {/* Overspeeding vehicles */}
+              {overspeedingVehicles.length > 0 && (
+                <div className="glass-red p-3 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span>🚀</span>
+                    <span className="text-xs font-bold text-red-400">OVERSPEEDING</span>
+                  </div>
+                  {overspeedingVehicles.map(busId => {
+                    const bus = mockBuses.find(b => b.id === busId);
+                    return (
+                      <div key={busId} className="text-xs text-gray-300">
+                        {bus?.number}: {bus?.speed} km/h
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              
+              {/* Critical vehicles */}
+              {criticalVehicles.length > 0 && (
+                <div className="glass-red p-3 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span>🔧</span>
+                    <span className="text-xs font-bold text-red-400">CRITICAL VEHICLES</span>
+                  </div>
+                  {criticalVehicles.map(health => {
+                    const bus = mockBuses.find(b => b.id === health.busId);
+                    return (
+                      <div key={health.busId} className="text-xs text-gray-300">
+                        {bus?.number}: {health.criticalWarnings[0] || 'Maintenance required'}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Drivers requiring attention */}
+              {driversRequiringAttention.length > 0 && (
+                <div className="glass-gold p-3 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span>🛡️</span>
+                    <span className="text-xs font-bold text-[#FFD700]">DRIVER ATTENTION</span>
+                  </div>
+                  {driversRequiringAttention.slice(0, 3).map(driver => (
+                    <div key={driver.driverId} className="text-xs text-gray-300">
+                      {driver.driverName}: {driver.overallScore} pts
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Standard alerts */}
               {mockAlerts.map(a => (
                 <div key={a.id} className={`p-3 rounded-xl text-sm ${
                   a.severity==='critical'?'glass-red':a.severity==='warning'?'glass-gold':'glass'
