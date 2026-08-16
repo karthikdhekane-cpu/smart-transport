@@ -59,13 +59,24 @@ export default function DashboardLayout({ children, role, navItems, userName = '
     };
   }, [notificationsOpen]);
 
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSidebarOpen(false);
+        setNotificationsOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, []);
+
   const handleMarkAllRead = () => {
     notificationService.markAllAsRead();
     setUnreadCount(0);
   };
 
   return (
-    <div className="min-h-screen bg-[#f1f5f9] flex relative">
+    <div className="min-h-[100dvh] bg-[#f6f8fb] flex relative overflow-x-clip">
       <DashboardBg />
 
       {/* Ambient overlay */}
@@ -75,11 +86,11 @@ export default function DashboardLayout({ children, role, navItems, userName = '
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 flex flex-col transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
+        className={`fixed inset-y-0 left-0 z-40 w-[min(18rem,calc(100vw-3rem))] lg:w-64 flex flex-col transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
         style={{background:'rgba(255,255,255,0.96)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',borderRight:'1px solid #e2e8f0',boxShadow:'1px 0 12px rgba(15,23,42,0.05)'}}
       >
         {/* Logo */}
-        <div className="p-6 border-b border-[#e2e8f0]">
+        <div className="p-5 lg:p-6 border-b border-[#e2e8f0]">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center text-lg" style={{background:`linear-gradient(135deg,${color},${color}bb)`}}>
               {roleIcons[role]}
@@ -92,7 +103,7 @@ export default function DashboardLayout({ children, role, navItems, userName = '
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-4 space-y-0.5 overflow-y-auto">
+        <nav aria-label={`${role} navigation`} className="flex-1 p-3 lg:p-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const active = pathname === item.href;
             return (
@@ -100,7 +111,7 @@ export default function DashboardLayout({ children, role, navItems, userName = '
                 key={item.href}
                 href={item.href}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                   active
                     ? 'sidebar-active text-[#0f172a]'
                     : 'text-[#64748b] hover:text-[#0f172a] hover:bg-[#f1f5f9]'
@@ -138,10 +149,10 @@ export default function DashboardLayout({ children, role, navItems, userName = '
       <div className="flex-1 lg:ml-64 flex flex-col min-h-screen relative z-10">
         {/* Top bar */}
         <header
-          className="sticky top-0 z-20 px-6 py-3.5 flex items-center justify-between"
+          className="sticky top-0 z-20 px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between gap-3"
           style={{background:'rgba(248,250,252,0.94)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',borderBottom:'1px solid #e2e8f0',boxShadow:'0 1px 6px rgba(15,23,42,0.04)'}}
         >
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden text-[#64748b] hover:text-[#0f172a] transition-colors text-xl">
+          <button aria-label="Open navigation" onClick={() => setSidebarOpen(!sidebarOpen)} className="lg:hidden min-w-11 min-h-11 rounded-xl text-[#64748b] hover:text-[#0f172a] hover:bg-white transition-colors text-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059669]">
             ☰
           </button>
           <div className="flex items-center gap-2">
@@ -150,9 +161,9 @@ export default function DashboardLayout({ children, role, navItems, userName = '
           </div>
           <div className="flex items-center gap-3 relative" ref={notificationsRef}>
             <div className="relative">
-              <button 
+              <button aria-label="Open notifications"
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
-                className="relative bg-white border border-[#e2e8f0] rounded-xl p-2 text-[#64748b] hover:text-[#0f172a] transition-colors shadow-sm"
+                className="relative min-w-11 min-h-11 bg-white border border-[#e2e8f0] rounded-xl p-2 text-[#64748b] hover:text-[#0f172a] transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#059669]"
               >
                 🔔
                 {unreadCount > 0 && (
@@ -164,7 +175,7 @@ export default function DashboardLayout({ children, role, navItems, userName = '
               
               {/* Notifications Dropdown */}
               {notificationsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#e2e8f0] overflow-hidden z-50">
+                <div role="dialog" aria-label="Notifications" className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-2rem))] bg-white rounded-2xl shadow-xl border border-[#e2e8f0] overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-[#e2e8f0] flex items-center justify-between bg-[#f8fafc]">
                     <span className="font-semibold text-[#0f172a] text-sm">Notifications</span>
                     <button 
@@ -230,7 +241,7 @@ export default function DashboardLayout({ children, role, navItems, userName = '
         </header>
 
         {/* Content */}
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 xl:p-10 overflow-auto">
           {children}
         </main>
       </div>
