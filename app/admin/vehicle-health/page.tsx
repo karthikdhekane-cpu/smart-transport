@@ -4,6 +4,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { vehicleHealthService } from '@/features/fleet-monitoring';
 import { mockBuses } from '@/lib/mockData';
 import { VehicleHealth, HealthStatus } from '@/features/fleet-monitoring/types/index';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -67,10 +69,7 @@ export default function VehicleHealthPage() {
   return (
     <DashboardLayout role="admin" navItems={navItems} userName="Admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black">Vehicle Health Dashboard 🔧</h1>
-          <p className="text-gray-400 text-sm mt-1">Fleet health monitoring and maintenance tracking</p>
-        </div>
+        <PageHeader eyebrow="Fleet maintenance" title="Vehicle Health Dashboard" description="Fleet health monitoring and maintenance tracking across all vehicles." />
 
         {/* Vehicle Selection */}
         <div className="flex-1 min-w-[200px]">

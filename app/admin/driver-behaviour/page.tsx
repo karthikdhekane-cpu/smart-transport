@@ -4,6 +4,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { driverBehaviourScoreService } from '@/features/fleet-monitoring';
 import { mockDrivers } from '@/lib/mockData';
 import { DriverBehaviourScore, BehaviourEvent } from '@/features/fleet-monitoring/types/index';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -54,10 +56,7 @@ export default function DriverBehaviourPage() {
   return (
     <DashboardLayout role="admin" navItems={navItems} userName="Admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black">Driver Behaviour Score 🛡️</h1>
-          <p className="text-gray-400 text-sm mt-1">Safety performance and behaviour analytics</p>
-        </div>
+        <PageHeader eyebrow="Driver performance" title="Driver Behaviour Score" description="Safety performance and behaviour analytics across the fleet." />
 
         {/* Driver Selection */}
         <div className="flex-1 min-w-[200px]">

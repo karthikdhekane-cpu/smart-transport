@@ -5,6 +5,8 @@ import MapMock from '@/components/map/MapMock';
 import { mockBuses, mockRoutes, mockStudents } from '@/lib/mockData';
 import { useETA } from '@/features/eta';
 import { gpsService } from '@/features/gps-tracking/services/GPSService';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/parent',          icon:'🏠', label:'Dashboard' },
@@ -77,10 +79,7 @@ export default function ParentTrackingPage() {
   return (
     <DashboardLayout role="parent" navItems={navItems} userName="Parent">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black">Live Bus Tracking 🗺️</h1>
-          <p className="text-gray-400 text-sm mt-1">Real-time location of {child.name}'s assigned bus</p>
-        </div>
+        <PageHeader eyebrow="Family transport" title={`${child.name}'s live bus`} description="See location, speed, next stop, and journey progress at a glance." />
 
         <div className="grid lg:grid-cols-4 gap-4">
           {[
@@ -89,11 +88,7 @@ export default function ParentTrackingPage() {
             { l:'Next Stop', v:childBus?.nextStop || 'Main Gate', icon:'📍' },
             { l:'Status', v:childBus?.status.toUpperCase() || 'MOVING', icon:'🟢' },
           ].map(c => (
-            <div key={c.l} className="glass-green rounded-2xl p-4">
-              <div className="text-2xl mb-2">{c.icon}</div>
-              <div className="text-lg font-bold neon-text">{c.v}</div>
-              <div className="text-xs text-gray-400">{c.l}</div>
-            </div>
+            <MetricCard key={c.l} label={c.l} value={c.v} detail="Live journey data" icon={c.icon} />
           ))}
         </div>
 

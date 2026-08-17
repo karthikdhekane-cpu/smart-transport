@@ -4,6 +4,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { speedMonitoringService } from '@/features/fleet-monitoring';
 import { mockBuses, mockDrivers } from '@/lib/mockData';
 import { SpeedMonitoringData, SpeedEvent } from '@/features/fleet-monitoring/types/index';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -44,10 +46,7 @@ export default function SpeedMonitoringPage() {
   return (
     <DashboardLayout role="admin" navItems={navItems} userName="Admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black">Speed Monitoring 🚀</h1>
-          <p className="text-gray-400 text-sm mt-1">Real-time speed tracking and overspeed detection</p>
-        </div>
+        <PageHeader eyebrow="Fleet safety" title="Speed Monitoring" description="Real-time speed tracking and overspeed detection across the fleet." />
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4">
@@ -91,26 +90,10 @@ export default function SpeedMonitoringPage() {
 
         {/* Fleet Summary */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="glass-green rounded-2xl p-5 hover-card">
-            <div className="text-3xl mb-2">📊</div>
-            <div className="text-2xl font-black neon-text">{fleetSummary.averageSpeed.toFixed(1)} km/h</div>
-            <div className="text-xs text-gray-400">Fleet Avg Speed</div>
-          </div>
-          <div className="glass-green rounded-2xl p-5 hover-card">
-            <div className="text-3xl mb-2">🚀</div>
-            <div className="text-2xl font-black text-[#FFD700]">{fleetSummary.overspeedCount}</div>
-            <div className="text-xs text-gray-400">Overspeeding</div>
-          </div>
-          <div className="glass-gold rounded-2xl p-5 hover-card">
-            <div className="text-3xl mb-2">⚠️</div>
-            <div className="text-2xl font-black gold-text">{fleetSummary.warningCount}</div>
-            <div className="text-xs text-gray-400">Warning</div>
-          </div>
-          <div className="glass-green rounded-2xl p-5 hover-card">
-            <div className="text-3xl mb-2">✅</div>
-            <div className="text-2xl font-black neon-text">{fleetSummary.normalCount}</div>
-            <div className="text-xs text-gray-400">Normal</div>
-          </div>
+          <MetricCard label="Fleet Avg Speed" value={`${fleetSummary.averageSpeed.toFixed(1)} km/h`} detail="Current average" icon="📊" tone="green" />
+          <MetricCard label="Overspeeding" value={fleetSummary.overspeedCount} detail="Vehicles over limit" icon="🚀" tone="amber" />
+          <MetricCard label="Warning" value={fleetSummary.warningCount} detail="Near threshold" icon="⚠️" tone="amber" />
+          <MetricCard label="Normal" value={fleetSummary.normalCount} detail="Within limits" icon="✅" tone="green" />
         </div>
 
         {/* Current Speed Status */}

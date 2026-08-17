@@ -7,6 +7,8 @@ import AlertBanner from '@/components/ui/AlertBanner';
 import { mockBuses, mockRoutes, mockStudents } from '@/lib/mockData';
 import { notificationService } from '@/features/notifications';
 import { useETA } from '@/features/eta';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/parent',          icon:'🏠', label:'Dashboard' },
@@ -47,16 +49,10 @@ export default function ParentDashboard() {
     <DashboardLayout role="parent" navItems={navItems} userName="Parent">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black text-white">Parent Dashboard 👋</h1>
-            <p className="text-gray-400 text-sm mt-1">Tracking {child.name} · {child.rollNo}</p>
-          </div>
-          <div className="flex items-center gap-2 glass-green rounded-full px-4 py-2 text-sm">
+        <PageHeader eyebrow="Family transport" title={`${child.name}'s journey`} description={`Tracking ${child.rollNo} from ${child.stop}.`} action={<div className="flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm text-emerald-700 ring-1 ring-emerald-100">
             <span className="w-2 h-2 rounded-full bg-[#00C853] animate-pulse"/>
             <span className="text-[#00C853] font-semibold">{childBus?.id || 'BUS-01'} Live</span>
-          </div>
-        </div>
+          </div>} />
 
         {/* Alert */}
         <AlertBanner type="info" message={`${childBus?.id || 'BUS-01'} is ${etaMinutes} minutes away from ${child.stop}`} />
@@ -69,12 +65,7 @@ export default function ParentDashboard() {
             { label:'Occupancy', value:`${childBus?.occupancy || 38}/${childBus?.capacity || 52}`, icon:'👥', color:'green', sub:`${occupancyPct}% full` },
             { label:'Safety Score', value:`${childBus?.safetyScore || 94}%`, icon:'🛡️', color:'gold', sub:'Excellent' },
           ].map((c) => (
-            <div key={c.label} className={`${c.color==='gold'?'glass-gold':'glass-green'} rounded-2xl p-4 hover-card`}>
-              <div className="text-2xl mb-2">{c.icon}</div>
-              <div className={`text-xl font-black ${c.color==='gold'?'gold-text':'neon-text'}`}>{c.value}</div>
-              <div className="text-xs text-gray-400 mt-0.5">{c.label}</div>
-              <div className="text-xs text-gray-600">{c.sub}</div>
-            </div>
+            <MetricCard key={c.label} label={c.label} value={c.value} detail={c.sub} icon={c.icon} tone={c.color === 'gold' ? 'amber' : 'green'} />
           ))}
         </div>
 

@@ -5,6 +5,8 @@ import MapMock from '@/components/map/MapMock';
 import { mockBuses, mockAlerts, mockStats, mockWeeklyData, mockDrivers } from '@/lib/mockData';
 import AdminSOSAlert from '@/components/sos/AdminSOSAlert';
 import { speedMonitoringService, vehicleHealthService, driverBehaviourScoreService } from '@/features/fleet-monitoring';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -58,16 +60,10 @@ export default function AdminDashboard() {
       <AdminSOSAlert />
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black text-white">Fleet Command Center ⚙️</h1>
-            <p className="text-gray-400 text-sm mt-1">Real-time monitoring · {buses.filter(b=>b.status==='moving').length} buses active</p>
-          </div>
-          <div className="flex items-center gap-2 glass-green rounded-full px-4 py-2 text-sm">
+        <PageHeader eyebrow="Fleet operations" title="Fleet Command Center" description={`Real-time monitoring · ${buses.filter(b=>b.status==='moving').length} buses active`} action={<div className="flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-2 text-sm text-emerald-700 ring-1 ring-emerald-100">
             <span className="w-2 h-2 rounded-full bg-[#00C853] animate-pulse"/>
             <span className="text-[#00C853] font-semibold">All Systems Live</span>
-          </div>
-        </div>
+          </div>} />
 
         {/* Critical alert */}
         {criticalAlerts.length > 0 && (
@@ -90,12 +86,7 @@ export default function AdminDashboard() {
             { l:'Safety Score', v:`${mockStats.safetyScore}%`, icon:'🛡️', c:'gold', sub:'Fleet avg' },
             { l:'Overspeeding', v:fleetSpeedSummary?.overspeedCount || 0, icon:'🚀', c:'red', sub:'Vehicles' },
           ].map(s => (
-            <div key={s.l} className={`${s.c==='gold'?'glass-gold':s.c==='red'?'glass-red':'glass-green'} rounded-2xl p-5 hover-card`}>
-              <div className="text-3xl mb-2">{s.icon}</div>
-              <div className={`text-2xl font-black ${s.c==='gold'?'gold-text':s.c==='red'?'text-red-400':'neon-text'}`}>{s.v}</div>
-              <div className="text-xs text-gray-400 mt-0.5">{s.l}</div>
-              <div className="text-xs text-gray-600">{s.sub}</div>
-            </div>
+            <MetricCard key={s.l} label={s.l} value={s.v} detail={s.sub} icon={s.icon} tone={s.c === 'gold' ? 'amber' : s.c === 'red' ? 'red' : 'green'} />
           ))}
         </div>
 

@@ -4,6 +4,8 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fuelConsumptionService } from '@/features/fleet-monitoring';
 import { mockBuses } from '@/lib/mockData';
 import { FuelAnalytics, FuelComparison } from '@/features/fleet-monitoring/types/index';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -53,10 +55,7 @@ export default function FuelAnalyticsPage() {
   return (
     <DashboardLayout role="admin" navItems={navItems} userName="Admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black">Fuel Consumption Analytics ⛽</h1>
-          <p className="text-gray-400 text-sm mt-1">Fuel efficiency tracking and cost analysis</p>
-        </div>
+        <PageHeader eyebrow="Fleet efficiency" title="Fuel Consumption Analytics" description="Fuel efficiency tracking and cost analysis across the fleet." />
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4">

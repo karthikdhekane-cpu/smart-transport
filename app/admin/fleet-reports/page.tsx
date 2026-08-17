@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { fleetPerformanceService } from '@/features/fleet-monitoring';
 import { FleetPerformanceSummary, VehiclePerformance, DriverPerformance, RoutePerformance } from '@/features/fleet-monitoring/types/index';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -33,10 +35,7 @@ export default function FleetReportsPage() {
   return (
     <DashboardLayout role="admin" navItems={navItems} userName="Admin">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black">Fleet Performance Reports 📈</h1>
-          <p className="text-gray-400 text-sm mt-1">Comprehensive fleet analytics and performance metrics</p>
-        </div>
+        <PageHeader eyebrow="Fleet analytics" title="Fleet Performance Reports" description="Comprehensive fleet analytics and performance metrics across all operations." />
 
         {/* Tab Navigation */}
         <div className="flex gap-2 border-b border-white/10 pb-2">
