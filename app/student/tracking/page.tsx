@@ -4,6 +4,9 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
 import { mockBuses, mockRoutes } from '@/lib/mockData';
 import { gpsService } from '@/features/gps-tracking/services/GPSService';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
+import StatusBadge from '@/components/ui/StatusBadge';
 
 const navItems = [
   { href:'/student',          icon:'🏠', label:'Dashboard' },
@@ -62,54 +65,56 @@ export default function TrackingPage() {
 
   return (
     <DashboardLayout role="student" navItems={navItems} userName="Priya Sharma">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black">Live Tracking 🗺️</h1>
-          <p className="text-gray-400 text-sm mt-1">Real-time location of your assigned bus</p>
+      <div className="space-y-8">
+        <PageHeader 
+          eyebrow="Journey status" 
+          title="Live bus tracking" 
+          description="Real-time location, current speed, and your next stop." 
+          action={<StatusBadge status="active">Live</StatusBadge>} 
+        />
+
+        {/* Primary KPIs */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard label="Bus Number" value={myBus.number} detail="Route A" icon="🚌" />
+          <MetricCard label="Current Speed" value={`${speed} km/h`} detail="Moving" icon="🚀" tone="amber" />
+          <MetricCard label="Next Stop" value={myBus.nextStop} detail="Approaching" icon="📍" tone="green" />
+          <MetricCard label="Status" value={myBus.status.toUpperCase()} detail="On schedule" icon="🟢" tone="green" />
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-4">
-          {[
-            { l:'Bus Number', v:myBus.number, icon:'🚌' },
-            { l:'Current Speed', v:`${speed} km/h`, icon:'🚀' },
-            { l:'Next Stop', v:myBus.nextStop, icon:'📍' },
-            { l:'Status', v:myBus.status.toUpperCase(), icon:'🟢' },
-          ].map(c => (
-            <div key={c.l} className="glass-green rounded-2xl p-4">
-              <div className="text-2xl mb-2">{c.icon}</div>
-              <div className="text-lg font-bold neon-text">{c.v}</div>
-              <div className="text-xs text-gray-400">{c.l}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="glass rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold">Live Map — Route A</h2>
-            <div className="flex items-center gap-2 text-xs text-[#00C853]">
-              <span className="w-2 h-2 rounded-full bg-[#00C853] animate-pulse"/>
-              Updating every 2s
+        {/* Primary Operational Visualization - Map */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+            <h2 className="text-sm font-semibold text-slate-900">Live Map — {myRoute.name}</h2>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"/>
+              <span className="text-xs text-slate-500">Updating every 2s</span>
             </div>
           </div>
-          <MapMock buses={[{...myBus, lat:busPos.lat, lng:busPos.lng, speed}]} route={myRoute} height={420}/>
+          <div className="p-4">
+            <MapMock buses={[{...myBus, lat:busPos.lat, lng:busPos.lng, speed}]} route={myRoute} height={420}/>
+          </div>
         </div>
 
-        {/* Route stops timeline */}
-        <div className="glass rounded-2xl p-6">
-          <h3 className="font-bold mb-4">Route Timeline</h3>
+        {/* Route Timeline */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5">
+          <h3 className="text-sm font-semibold text-slate-900 mb-4">Route Timeline</h3>
           <div className="relative">
-            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-white/10"/>
+            <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200"/>
             <div className="space-y-4">
               {myRoute.stops.map((stop, i) => (
                 <div key={stop.name} className="flex items-center gap-4 pl-10 relative">
-                  <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 ${i < 2 ? 'bg-[#00C853] border-[#00C853]' : i === 2 ? 'bg-[#FFD700] border-[#FFD700] animate-pulse' : 'bg-transparent border-white/20'}`}/>
-                  <div className="flex-1 glass rounded-xl p-3">
+                  <div className={`absolute left-2.5 w-3 h-3 rounded-full border-2 ${
+                    i < 2 ? 'bg-emerald-500 border-emerald-500' : 
+                    i === 2 ? 'bg-amber-500 border-amber-500 animate-pulse' : 
+                    'bg-white border-slate-300'
+                  }`}/>
+                  <div className="flex-1 rounded-lg border border-slate-200 bg-white p-3">
                     <div className="flex justify-between items-center">
-                      <span className={`text-sm font-medium ${i < 2 ? 'text-gray-500 line-through' : 'text-white'}`}>{stop.name}</span>
-                      <span className="text-xs text-gray-500">{stop.time}</span>
+                      <span className={`text-sm font-medium ${i < 2 ? 'text-slate-400 line-through' : 'text-slate-900'}`}>{stop.name}</span>
+                      <span className="text-xs text-slate-500">{stop.time}</span>
                     </div>
-                    {i === 2 && <span className="text-xs text-[#FFD700] font-bold">Bus is here now</span>}
-                    {stop.name === 'Town Hall' && <span className="text-xs text-[#00C853] font-bold">Your stop</span>}
+                    {i === 2 && <span className="text-xs text-amber-600 font-medium">Bus is here now</span>}
+                    {stop.name === 'Town Hall' && <span className="text-xs text-emerald-600 font-medium">Your stop</span>}
                   </div>
                 </div>
               ))}

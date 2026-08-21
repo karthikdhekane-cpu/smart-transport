@@ -4,6 +4,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
 import { JourneyTimeline } from '@/components/journey-timeline/JourneyTimeline';
 import { mockBuses, mockRoutes } from '@/lib/mockData';
+import PageHeader from '@/components/ui/PageHeader';
 
 const navItems = [
   { href:'/driver',          icon:'🏠', label:'Dashboard' },
@@ -40,13 +41,10 @@ export default function TripPage() {
   return (
     <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black">Live GPS Tracking 🚌</h1>
-          <p className="text-gray-400 text-sm mt-1">Real-time bus location sharing</p>
-        </div>
+        <PageHeader eyebrow="Trip control" title="Live GPS tracking" description="Start or end the trip while keeping your current location and route progress visible." />
 
         {/* Trip timer */}
-        <div className={`rounded-3xl p-8 text-center ${tripActive ? 'glass-green' : 'glass'}`}>
+        <div className={`rounded-2xl border p-5 sm:p-8 text-center ${tripActive ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-200 shadow-sm'}`}>
           <p className="text-gray-400 text-sm mb-2">{tripActive ? 'Trip Duration' : 'Ready to Start'}</p>
           <div className={`text-6xl font-black mb-4 ${tripActive ? 'neon-text' : 'text-gray-600'}`}>
             {formatTime(elapsed)}

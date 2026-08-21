@@ -6,6 +6,8 @@ import { DriverStatusCard } from '@/components/driver-status/DriverStatusCard';
 import { DriverAvailabilityToggle } from '@/components/driver-availability/DriverAvailabilityToggle';
 import { useDriverState } from '@/features/driver-state/hooks/useDriverState';
 import { mockBuses, mockRoutes } from '@/lib/mockData';
+import PageHeader from '@/components/ui/PageHeader';
+import MetricCard from '@/components/ui/MetricCard';
 
 const navItems = [
   { href:'/driver',          icon:'🏠', label:'Dashboard' },
@@ -60,18 +62,12 @@ export default function DriverDashboard() {
   return (
     <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-white">Driver Dashboard 🚌</h1>
-            <p className="text-gray-400 text-sm mt-1">Rajesh Kumar · {myBus.number} · Route A</p>
-          </div>
-          <div className="flex items-center gap-3">
+        <PageHeader eyebrow="Driver operations" title="Today's trip" description={`Rajesh Kumar · ${myBus.number} · Route A`} action={<div className="flex items-center gap-3">
             <div className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${tripActive ? 'glass-green text-[#00C853]' : 'glass text-gray-400'}`}>
               <span className={`w-2 h-2 rounded-full ${tripActive ? 'bg-[#00C853] animate-pulse' : 'bg-gray-600'}`}/>
               {tripActive ? 'Trip Active' : 'Off Duty'}
             </div>
-          </div>
-        </div>
+          </div>} />
 
         {sosActive && (
           <div className="glass-red rounded-2xl p-4 flex items-center gap-4 animate-pulse">
@@ -97,11 +93,7 @@ export default function DriverDashboard() {
             { l:'Today\'s Trips', v:'2', icon:'🗺️', c:'gold', active:true },
             { l:'Students', v:`${myBus.occupancy}`, icon:'👥', c:'green', active:true },
           ].map(s => (
-            <div key={s.l} className={`${s.c==='gold'?'glass-gold':'glass-green'} rounded-2xl p-4 hover-card`}>
-              <div className="text-2xl mb-2">{s.icon}</div>
-              <div className={`text-xl font-black ${s.c==='gold'?'gold-text':'neon-text'}`}>{s.v}</div>
-              <div className="text-xs text-gray-400">{s.l}</div>
-            </div>
+            <MetricCard key={s.l} label={s.l} value={s.v} detail={s.active ? 'Available now' : 'Waiting to start'} icon={s.icon} tone={s.c === 'gold' ? 'amber' : 'green'} />
           ))}
         </div>
 
