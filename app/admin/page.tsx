@@ -4,6 +4,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
 import { mockBuses, mockAlerts, mockStats, mockWeeklyData, mockDrivers } from '@/lib/mockData';
 import AdminSOSAlert from '@/components/sos/AdminSOSAlert';
+import WeatherInfoCard from '@/components/weather/WeatherInfoCard';
 
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
@@ -61,6 +62,9 @@ export default function AdminDashboard() {
             <span className="text-xs text-gray-500">{criticalAlerts[0].time}</span>
           </div>
         )}
+
+        {/* Weather Info */}
+        <WeatherInfoCard title="Weather at College" />
 
         {/* KPI cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

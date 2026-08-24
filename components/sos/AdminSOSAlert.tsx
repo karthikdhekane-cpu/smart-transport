@@ -1,6 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 
+type EmergencyType = 'general' | 'women_safety' | 'medical' | 'accident' | 'other';
+
 interface EmergencyEvent {
   id: string;
   student: string;
@@ -9,6 +11,7 @@ interface EmergencyEvent {
   time: string;
   status: 'active' | 'responding' | 'resolved';
   elapsed: number;
+  emergencyType: EmergencyType;
 }
 
 const MOCK_EVENTS: EmergencyEvent[] = [
@@ -20,6 +23,7 @@ const MOCK_EVENTS: EmergencyEvent[] = [
     time: new Date().toLocaleTimeString(),
     status: 'active',
     elapsed: 0,
+    emergencyType: 'women_safety',
   },
 ];
 
@@ -103,7 +107,7 @@ export default function AdminSOSAlert() {
               <div className="text-white text-sm font-bold">
                 {ev.status === 'resolved' ? 'Emergency Resolved' : 'Emergency Alert'}
               </div>
-              <div className="text-[10px]" style={{color: ev.status === 'resolved' ? 'rgba(134,239,172,0.6)' : 'rgba(252,165,165,0.6)'}}>
+              <div className="flex items-center gap-2 text-[10px]" style={{color: ev.status === 'resolved' ? 'rgba(134,239,172,0.6)' : 'rgba(252,165,165,0.6)'}}>
                 {ev.id} · {ev.time}
               </div>
             </div>
@@ -113,6 +117,22 @@ export default function AdminSOSAlert() {
               </div>
             )}
           </div>
+
+          {/* Emergency Type Badge */}
+          {ev.emergencyType !== 'general' && (
+            <div className="px-4 py-2 border-b" style={{borderColor: 'rgba(239,68,68,0.25)'}}>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-white/50">Type:</span>
+                <span className={`font-semibold ${
+                  ev.emergencyType === 'women_safety' ? 'text-pink-400' :
+                  ev.emergencyType === 'medical' ? 'text-blue-400' :
+                  ev.emergencyType === 'accident' ? 'text-red-400' : 'text-gray-400'
+                }`}>
+                  {ev.emergencyType.replace('_', ' ').toUpperCase()}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Details */}
           <div className="px-4 py-3 space-y-1.5">
@@ -126,6 +146,14 @@ export default function AdminSOSAlert() {
                 <span className="text-white font-semibold truncate">{i.value}</span>
               </div>
             ))}
+            {ev.emergencyType !== 'general' && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-white/35 w-14 flex-shrink-0">Type</span>
+                <span className={`text-white font-semibold capitalize`}>
+                  {ev.emergencyType.replace('_', ' ')}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Status pill */}
