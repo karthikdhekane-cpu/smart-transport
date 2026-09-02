@@ -1,0 +1,250 @@
+{
+  "rules": {
+    "users": {
+      "$userId": {
+        ".read": "$userId == auth.uid || root.users[auth.uid].data.role == 'admin'",
+        ".write": "$userId == auth.uid && root.users[auth.uid].data.role != 'admin' && !newData.hasChild('role') && !newData.hasChild('permissions') && !newData.hasChild('admin') && !newData.hasChild('uid')",
+        "name": { ".validate": true },
+        "email": { ".validate": true },
+        "phone": { ".validate": true },
+        "role": { ".validate": false },
+        "permissions": { ".validate": false },
+        "admin": { ".validate": false },
+        "uid": { ".validate": false }
+      }
+    },
+    "students": {
+      "$studentId": {
+        ".read": "$studentId == auth.uid || root.users[auth.uid].data.role == 'admin' || (root.users[auth.uid].data.role == 'parent' && root.parents[auth.uid].data.studentIds != null && root.parents[auth.uid].data.studentIds.contains($studentId)) || (root.users[auth.uid].data.role == 'driver' && root.drivers[auth.uid].data.busId != null && root.buses[root.drivers[auth.uid].data.busId].data.studentIds != null && root.buses[root.drivers[auth.uid].data.busId].data.studentIds.contains($studentId))",
+        ".write": "root.users[auth.uid].data.role == 'admin'",
+        "name": { ".validate": true },
+        "email": { ".validate": true },
+        "phone": { ".validate": true },
+        "parentId": { ".validate": true },
+        "busId": { ".validate": true },
+        "studentId": { ".validate": false }
+      }
+    },
+    "parents": {
+      "$parentId": {
+        ".read": "$parentId == auth.uid || root.users[auth.uid].data.role == 'admin'",
+        ".write": "root.users[auth.uid].data.role == 'admin' || $parentId == auth.uid",
+        "name": { ".validate": true },
+        "email": { ".validate": true },
+        "studentIds": { ".validate": true },
+        "phone": { ".validate": true }
+      }
+    },
+    "drivers": {
+      "$driverId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || root.users[auth.uid].data.role == 'driver'",
+        ".write": "root.users[auth.uid].data.role == 'admin' || $driverId == auth.uid",
+        "name": { ".validate": true },
+        "email": { ".validate": true },
+        "phone": { ".validate": true },
+        "busId": { ".validate": true },
+        "licenseNumber": { ".validate": true },
+        "safetyScore": { ".validate": true },
+        "driverId": { ".validate": false }
+      }
+    },
+    "buses": {
+      "$busId": {
+        ".read": "true",
+        ".write": "root.users[auth.uid].data.role == 'admin'",
+        "busNumber": { ".validate": true },
+        "capacity": { ".validate": true },
+        "driverId": { ".validate": true },
+        "routeId": { ".validate": true },
+        "studentIds": { ".validate": true }
+      }
+    },
+    "routes": {
+      "$routeId": {
+        ".read": "true",
+        ".write": "root.users[auth.uid].data.role == 'admin'",
+        "name": { ".validate": true },
+        "busId": { ".validate": true },
+        "stops": { ".validate": true },
+        "distance": { ".validate": true }
+      }
+    },
+    "trips": {
+      "$tripId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || (root.users[auth.uid].data.role == 'driver' && data.child('driverId').val() == auth.uid)",
+        ".write": "root.users[auth.uid].data.role == 'admin' || root.users[auth.uid].data.role == 'driver'",
+        "busId": { ".validate": true },
+        "driverId": { ".validate": true },
+        "routeId": { ".validate": true },
+        "startTime": { ".validate": true },
+        "endTime": { ".validate": true },
+        "status": { ".validate": true }
+      }
+    },
+    "attendance": {
+      "$attendanceId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || (root.users[auth.uid].data.role == 'driver' && data.child('busId').val() == root.drivers[auth.uid].data.busId) || (root.users[auth.uid].data.role == 'student' && data.child('studentId').val() == auth.uid) || (root.users[auth.uid].data.role == 'parent' && root.parents[auth.uid].data.studentIds.contains(data.child('studentId').val()))",
+        ".write": "root.users[auth.uid].data.role == 'admin' || root.users[auth.uid].data.role == 'driver'",
+        "studentId": { ".validate": true },
+        "busId": { ".validate": true },
+        "timestamp": { ".validate": true },
+        "status": { ".validate": true },
+        "scanId": { ".validate": true }
+      }
+    },
+    "notifications": {
+      "$notificationId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || data.child('userId').val() == auth.uid",
+        ".write": "root.users[auth.uid].data.role == 'admin' || root.users[auth.uid].data.role == 'driver'",
+        "userId": { ".validate": true },
+        "type": { ".validate": true },
+        "title": { ".validate": true },
+        "message": { ".validate": true },
+        "timestamp": { ".validate": true },
+        "read": { ".validate": true },
+        "priority": { ".validate": true },
+        "severity": { ".validate": true },
+        "busId": { ".validate": true },
+        "busNumber": { ".validate": true },
+        "routeId": { ".validate": true },
+        "routeName": { ".validate": true },
+        "delayMinutes": { ".validate": true },
+        "delayReason": { ".validate": true }
+      }
+    },
+    "alerts": {
+      "$alertId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || (root.users[auth.uid].data.role == 'driver' && data.child('busId').val() == root.drivers[auth.uid].data.busId) || (root.users[auth.uid].data.role == 'student' && data.child('busId').val() == root.students[auth.uid].data.busId)",
+        ".write": "root.users[auth.uid].data.role == 'admin' || root.users[auth.uid].data.role == 'driver'",
+        "busId": { ".validate": true },
+        "userId": { ".validate": true },
+        "userRole": { ".validate": true },
+        "type": { ".validate": true },
+        "message": { ".validate": true },
+        "timestamp": { ".validate": true },
+        "status": { ".validate": true },
+        "severity": { ".validate": true }
+      }
+    },
+    "sosAlerts": {
+      "$sosId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || (root.users[auth.uid].data.role == 'student' && data.child('userId').val() == auth.uid) || (root.users[auth.uid].data.role == 'driver' && data.child('busId').val() == root.drivers[auth.uid].data.busId)",
+        ".write": "root.users[auth.uid].data.role == 'student' || root.users[auth.uid].data.role == 'driver'",
+        "userId": { ".validate": true },
+        "userRole": { ".validate": true },
+        "busId": { ".validate": true },
+        "type": { ".validate": true },
+        "timestamp": { ".validate": true },
+        "latitude": { ".validate": true },
+        "longitude": { ".validate": true },
+        "status": { ".validate": true },
+        "acknowledgedBy": { ".validate": true },
+        "acknowledgedAt": { ".validate": true },
+        "resolvedBy": { ".validate": true },
+        "resolvedAt": { ".validate": true }
+      }
+    },
+    "chatMessages": {
+      "$messageId": {
+        ".read": "data.child('senderId').val() == auth.uid || data.child('recipientId').val() == auth.uid",
+        ".write": "auth.uid == newData.child('senderId').val()",
+        "senderId": { ".validate": true },
+        "senderName": { ".validate": true },
+        "senderRole": { ".validate": true },
+        "recipientId": { ".validate": true },
+        "recipientName": { ".validate": true },
+        "recipientRole": { ".validate": true },
+        "content": { ".validate": true },
+        "type": { ".validate": true },
+        "timestamp": { ".validate": true },
+        "read": { ".validate": true }
+      }
+    },
+    "chatThreads": {
+      "$threadId": {
+        ".read": "data.child('participantIds').val() != null && data.child('participantIds').val().contains(auth.uid)",
+        ".write": "root.users[auth.uid].data.role == 'admin'",
+        "participantIds": { ".validate": true },
+        "participantNames": { ".validate": true },
+        "lastMessage": { ".validate": true },
+        "lastMessageTime": { ".validate": true },
+        "unreadCount": { ".validate": true }
+      }
+    },
+    "broadcasts": {
+      "$broadcastId": {
+        ".read": "root.users[auth.uid].data.role == 'admin'",
+        ".write": "root.users[auth.uid].data.role == 'admin'",
+        "title": { ".validate": true },
+        "message": { ".validate": true },
+        "recipientRole": { ".validate": true },
+        "timestamp": { ".validate": true },
+        "createdBy": { ".validate": true }
+      }
+    },
+    "maintenances": {
+      "$maintenanceId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || (root.users[auth.uid].data.role == 'driver' && data.child('busId').val() == root.drivers[auth.uid].data.busId)",
+        ".write": "root.users[auth.uid].data.role == 'admin'",
+        "busId": { ".validate": true },
+        "maintenanceType": { ".validate": true },
+        "priority": { ".validate": true },
+        "scheduledDate": { ".validate": true },
+        "actualCompletionDate": { ".validate": true },
+        "status": { ".validate": true },
+        "notes": { ".validate": true },
+        "cost": { ".validate": true },
+        "technician": { ".validate": true }
+      }
+    },
+    "activityLogs": {
+      "$logId": {
+        ".read": "root.users[auth.uid].data.role == 'admin'",
+        ".write": false,
+        "timestamp": { ".validate": true },
+        "actorId": { ".validate": true },
+        "actorName": { ".validate": true },
+        "actorRole": { ".validate": true },
+        "action": { ".validate": true },
+        "entity": { ".validate": true },
+        "entityId": { ".validate": true },
+        "description": { ".validate": true },
+        "severity": { ".validate": true }
+      }
+    },
+    "seats": {
+      "$seatId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || (root.users[auth.uid].data.role == 'driver' && data.child('busId').val() == root.drivers[auth.uid].data.busId) || (root.users[auth.uid].data.role == 'student' && data.child('studentId').val() == auth.uid) || (root.users[auth.uid].data.role == 'parent' && root.parents[auth.uid].data.studentIds.contains(data.child('studentId').val()))",
+        ".write": "root.users[auth.uid].data.role == 'admin' || root.users[auth.uid].data.role == 'driver'",
+        "busId": { ".validate": true },
+        "seatNumber": { ".validate": true },
+        "studentId": { ".validate": true },
+        "studentName": { ".validate": true },
+        "assigned": { ".validate": true }
+      }
+    },
+    "busSeatAvailability": {
+      "$busId": {
+        ".read": "true",
+        ".write": "root.users[auth.uid].data.role == 'admin'",
+        "total": { ".validate": true },
+        "occupied": { ".validate": true },
+        "available": { ".validate": true },
+        "updatedAt": { ".validate": true }
+      }
+    },
+    "gpsLocations": {
+      "$locationId": {
+        ".read": "root.users[auth.uid].data.role == 'admin' || (root.users[auth.uid].data.role == 'driver' && data.child('busId').val() == root.drivers[auth.uid].data.busId) || (root.users[auth.uid].data.role == 'student' && data.child('busId').val() == root.students[auth.uid].data.busId) || (root.users[auth.uid].data.role == 'parent' && root.parents[auth.uid].data.studentIds.contains(data.child('studentId').val()))",
+        ".write": false,
+        "busId": { ".validate": true },
+        "studentId": { ".validate": true },
+        "lat": { ".validate": true },
+        "lng": { ".validate": true },
+        "speed": { ".validate": true },
+        "heading": { ".validate": true },
+        "timestamp": { ".validate": true }
+      }
+    }
+  }
+}

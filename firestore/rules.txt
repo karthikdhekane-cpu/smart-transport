@@ -1,0 +1,194 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAdmin() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isDriver() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'driver';
+    }
+    
+    function isStudent() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+    
+    function isParent() {
+      return request.auth != null && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'parent';
+    }
+    
+    function getDriverBusId(driverId) {
+      return get(/databases/$(database)/documents/drivers/$(driverId)).data.busId;
+    }
+    
+    function getStudentBusId(studentId) {
+      return get(/databases/$(database)/documents/students/$(studentId)).data.busId;
+    }
+    
+    function getParentStudentIds(parentId) {
+      return get(/databases/$(database)/documents/parents/$(parentId)).data.studentIds;
+    }
+    
+    // Users - Admin creates, user reads own, limited updates
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow create: if isAdmin();
+      allow update: if request.auth.uid == userId && !isAdmin();
+        // Only update explicitly allowed fields
+        if request.resource.data.diff().onlyAffectedFields(['name', 'phone', 'email']);
+    }
+    
+    // Students - Admin creates, authorized users read
+    match /students/{studentId} {
+      allow read: if request.auth.uid == studentId ||
+                  isAdmin() ||
+                  isParent() && getParentStudentIds(request.auth.uid).hasKey(studentId) ||
+                  isDriver() && getDriverBusId(request.auth.uid) != null && 
+                    get(/databases/$(database)/documents/buses/$(getDriverBusId(request.auth.uid))).data.studentIds.hasKey(studentId);
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+    }
+    
+    // Parents - Parent reads own, admin reads all
+    match /parents/{parentId} {
+      allow read: if request.auth.uid == parentId || isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || request.auth.uid == parentId;
+    }
+    
+    // Drivers - All read, admin creates/updates, driver can update own profile
+    match /drivers/{driverId} {
+      allow read: if isAdmin() || request.auth.uid == driverId;
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (request.auth.uid == driverId && !isAdmin());
+        // Driver can only update non-sensitive fields
+        if !isAdmin() && request.resource.data.diff().onlyAffectedFields(['name', 'email', 'phone', 'licenseNumber', 'safetyScore']);
+    }
+    
+    // Buses - All read, admin creates/updates
+    match /buses/{busId} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+    }
+    
+    // Routes - All read, admin creates/updates
+    match /routes/{routeId} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+    }
+    
+    // Trips - Admin, driver reads own
+    match /trips/{tripId} {
+      allow read: if isAdmin() || isDriver() && get(/databases/$(database)/documents/trips/$(tripId)).data.driverId == request.auth.uid;
+      allow create: if isAdmin() || isDriver();
+      allow update: if isAdmin();
+    }
+    
+    // Attendance - Admin, driver, parent, student reads
+    match /attendance/{attendanceId} {
+      allow read: if isAdmin() ||
+                  isDriver() && get(/databases/$(database)/documents/attendance/$(attendanceId)).data.busId == getDriverBusId(request.auth.uid) ||
+                  isStudent() && get(/databases/$(database)/documents/attendance/$(attendanceId)).data.studentId == request.auth.uid ||
+                  isParent() && getParentStudentIds(request.auth.uid).hasKey(get(/databases/$(database)/documents/attendance/$(attendanceId)).data.studentId);
+      allow create: if isAdmin() || isDriver();
+      allow update: if isAdmin();
+    }
+    
+    // Notifications - User reads own, admin creates
+    match /notifications/{notificationId} {
+      allow read: if request.auth.uid == get(/databases/$(database)/documents/notifications/$(notificationId)).data.userId || isAdmin();
+      allow create: if isAdmin() || isDriver();
+      allow update: if isAdmin();
+    }
+    
+    // Alerts - Admin, driver reads own bus
+    match /alerts/{alertId} {
+      allow read: if isAdmin() ||
+                  isDriver() && get(/databases/$(database)/documents/alerts/$(alertId)).data.busId == getDriverBusId(request.auth.uid) ||
+                  isStudent() && get(/databases/$(database)/documents/alerts/$(alertId)).data.busId == getStudentBusId(request.auth.uid);
+      allow create: if isAdmin() || isDriver();
+      allow update: if isAdmin();
+    }
+    
+    // SOS Alerts - Admin, driver, student reads
+    match /sosAlerts/{sosId} {
+      allow read: if isAdmin() ||
+                  isStudent() && get(/databases/$(database)/documents/sosAlerts/$(sosId)).data.userId == request.auth.uid ||
+                  isDriver() && get(/databases/$(database)/documents/sosAlerts/$(sosId)).data.busId == getDriverBusId(request.auth.uid);
+      allow create: if isStudent() || isDriver();
+      allow update: if isAdmin();
+    }
+    
+    // Chat Messages - Sender, recipient only
+    match /chatMessages/{messageId} {
+      allow read: if request.auth.uid == get(/databases/$(database)/documents/chatMessages/$(messageId)).data.senderId ||
+                  request.auth.uid == get(/databases/$(database)/documents/chatMessages/$(messageId)).data.recipientId;
+      allow create: if request.auth.uid == request.resource.data.senderId;
+      allow update: if isAdmin();
+    }
+    
+    // Chat Threads - Participant only
+    match /chatThreads/{threadId} {
+      allow read: if get(/databases/$(database)/documents/chatThreads/$(threadId)).data.participantIds.hasKey(request.auth.uid);
+      allow create: if false; // Only via Admin SDK server-side
+      allow update: if isAdmin();
+    }
+    
+    // Broadcasts - Admin read only
+    match /broadcasts/{broadcastId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+    }
+    
+    // Maintenances - Admin, driver reads
+    match /maintenances/{maintenanceId} {
+      allow read: if isAdmin() ||
+                  isDriver() && get(/databases/$(database)/documents/maintenances/$(maintenanceId)).data.busId == getDriverBusId(request.auth.uid);
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+    }
+    
+    // Activity Logs - Admin read only (system-generated via Admin SDK)
+    match /activityLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if false; // System only via Admin SDK
+      allow update: if false;
+    }
+    
+    // Seats - Admin, driver, parent, student reads
+    match /seats/{seatId} {
+      allow read: if isAdmin() ||
+                  isDriver() && get(/databases/$(database)/documents/seats/$(seatId)).data.busId == getDriverBusId(request.auth.uid) ||
+                  isStudent() && get(/databases/$(database)/documents/seats/$(seatId)).data.studentId == request.auth.uid ||
+                  isParent() && getParentStudentIds(request.auth.uid).hasKey(get(/databases/$(database)/documents/seats/$(seatId)).data.studentId);
+      allow create: if isAdmin() || isDriver();
+      allow update: if isAdmin();
+    }
+    
+    // Bus Seat Availability - Public aggregate data
+    match /busSeatAvailability/{busId} {
+      allow read: if true;
+      allow create: if false;
+      allow update: if isAdmin();
+    }
+    
+    // GPS Locations - Admin, driver, student, parent reads
+    match /gpsLocations/{locationId} {
+      allow read: if isAdmin() ||
+                  isDriver() && get(/databases/$(database)/documents/gpsLocations/$(locationId)).data.busId == getDriverBusId(request.auth.uid) ||
+                  (isStudent() || isParent()) && get(/databases/$(database)/documents/gpsLocations/$(locationId)).data.studentId == request.auth.uid;
+      allow create: if false; // Only via Admin SDK
+      allow update: if false;
+    }
+  }
+}
