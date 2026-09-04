@@ -11,6 +11,21 @@ export class BaseRepository<T extends BaseEntity> implements IRepository<T> {
     this.collectionName = collectionName;
   }
 
+  // Helper method to get a transaction instance
+  protected async runTransaction<R>(operation: (tx: any) => Promise<R>): Promise<R | null> {
+    if (!adminFirestore) {
+      console.warn('Firebase Admin SDK not initialized');
+      return null;
+    }
+    
+    try {
+      return await operation(adminFirestore);
+    } catch (error) {
+      console.error(`Transaction error on ${this.collectionName}:`, error);
+      return null;
+    }
+  }
+
   async getAll(): Promise<T[]> {
     if (!adminFirestore) {
       console.warn('Firebase Admin SDK not initialized');
@@ -82,30 +97,25 @@ export class BaseRepository<T extends BaseEntity> implements IRepository<T> {
     }
     
     try {
-      // Get existing document
       const existingDoc = await adminFirestore.collection(this.collectionName).doc(id).get();
       if (!existingDoc.exists) {
         return null;
       }
       
-      // Prepare update data
       const updateData: any = { ...data };
       if (updateData.createdAt !== undefined) {
         delete updateData.createdAt;
       }
       updateData.updatedAt = Date.now();
       
-      // Remove undefined values
       Object.keys(updateData).forEach(key => {
         if (updateData[key] === undefined) {
           delete updateData[key];
         }
       });
       
-      // Update document
       await adminFirestore.collection(this.collectionName).doc(id).update(updateData);
       
-      // Return updated document
       const updatedDoc = await adminFirestore.collection(this.collectionName).doc(id).get();
       if (updatedDoc.exists) {
         return {
