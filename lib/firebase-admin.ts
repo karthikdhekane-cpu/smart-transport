@@ -23,6 +23,8 @@ if (!admin.apps.length) {
       console.error('Failed to initialize Firebase Admin SDK:', error);
     }
   }
+} else {
+  appInitialized = true;
 }
 
 // Helper to get Firestore instance

@@ -2,58 +2,90 @@
 // Provides attendance records and QR/RFID scanning
 
 import { useState, useEffect, useCallback } from 'react';
-import { attendanceService } from '../services/AttendanceService';
-import { AttendanceRecord, AttendanceType } from '../types/index';
+import { getAttendanceRecords, createAttendanceRecord } from '../services/attendanceApi';
+import { AttendanceRecord } from '../types/index';
 
 export interface UseAttendanceReturn {
   // Records
   records: AttendanceRecord[];
   recordsByBus: (busId: string) => AttendanceRecord[];
   recordsByStudent: (studentId: string) => AttendanceRecord[];
+  recordsByTrip: (tripId: string) => AttendanceRecord[];
   
   // Actions
-  scanQR: (data: string) => { success: boolean; message: string };
-  scanRFID: (tagId: string) => { success: boolean; message: string };
+  createRecord: (data: {
+    studentId: string;
+    status: 'picked_up' | 'dropped_off';
+    method: 'qr' | 'rfid' | 'manual';
+    scanId: string;
+    stopId?: string;
+    stopName?: string;
+  }) => Promise<{ success: boolean; attendance?: any; error?: string }>;
   
   // Loading state
   isLoading: boolean;
+  
+  // Refresh
+  refresh: () => Promise<void>;
 }
 
 export function useAttendance(): UseAttendanceReturn {
-  const [records, setRecords] = useState<AttendanceRecord[]>(() => attendanceService.getAllAttendanceRecords());
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setRecords(attendanceService.getAllAttendanceRecords());
-    setIsLoading(false);
+    const loadData = async () => {
+      try {
+        const recordsData = await getAttendanceRecords();
+        setRecords(recordsData);
+      } catch (e) {
+        console.error('Failed to load attendance records:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
   const recordsByBus = useCallback((busId: string) => {
-    return attendanceService.getAttendanceByBus(busId);
-  }, []);
+    return records.filter(r => r.busId === busId);
+  }, [records]);
 
   const recordsByStudent = useCallback((studentId: string) => {
-    return attendanceService.getAttendanceByStudent(studentId);
-  }, []);
+    return records.filter(r => r.studentId === studentId);
+  }, [records]);
 
-  const scanQR = useCallback((data: string) => {
-    const result = attendanceService.processQRScan(data);
-    setRecords(attendanceService.getAllAttendanceRecords());
+  const recordsByTrip = useCallback((tripId: string) => {
+    return records.filter(r => r.tripId === tripId);
+  }, [records]);
+
+  const createRecord = useCallback(async (data: {
+    studentId: string;
+    status: 'picked_up' | 'dropped_off';
+    method: 'qr' | 'rfid' | 'manual';
+    scanId: string;
+    stopId?: string;
+    stopName?: string;
+  }) => {
+    const result = await createAttendanceRecord(data);
+    if (result.success) {
+      setRecords(prev => [...prev, result.attendance]);
+    }
     return result;
   }, []);
 
-  const scanRFID = useCallback((tagId: string) => {
-    const result = attendanceService.processRFIDScan(tagId);
-    setRecords(attendanceService.getAllAttendanceRecords());
-    return result;
+  const refresh = useCallback(async () => {
+    const updatedRecords = await getAttendanceRecords();
+    setRecords(updatedRecords);
   }, []);
 
   return {
     records,
     recordsByBus,
     recordsByStudent,
-    scanQR,
-    scanRFID,
+    recordsByTrip,
+    createRecord,
     isLoading,
+    refresh,
   };
 }

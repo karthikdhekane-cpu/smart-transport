@@ -1,11 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import MapMock from '@/components/map/MapMock';
 import { DriverStatusCard } from '@/components/driver-status/DriverStatusCard';
 import { DriverAvailabilityToggle } from '@/components/driver-availability/DriverAvailabilityToggle';
-import { useDriverState } from '@/features/driver-state/hooks/useDriverState';
-import { mockBuses, mockRoutes } from '@/lib/mockData';
+import { busApi, routeApi } from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
+
+export const dynamic = 'force-dynamic';
 
 const navItems = [
   { href:'/driver',          icon:'🏠', label:'Dashboard' },
@@ -17,19 +20,63 @@ const navItems = [
 ];
 
 export default function DriverDashboard() {
-  const myBus = mockBuses[0];
-  const myRoute = mockRoutes[0];
+  const [myBus, setMyBus] = useState<any>(null);
+  const [myRoute, setMyRoute] = useState<any>(null);
+  const [myDriver, setMyDriver] = useState<any>(null);
   const [tripActive, setTripActive] = useState(false);
   const [speed, setSpeed] = useState(0);
-  const [busPos, setBusPos] = useState({ lat: myBus.lat, lng: myBus.lng });
+  const [busPos, setBusPos] = useState({ lat: 0, lng: 0 });
   const [sosActive, setSosActive] = useState(false);
   const [events, setEvents] = useState<{time:string,msg:string,type:string}[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { currentUser } = useAuth();
   
-  // Driver state
-  const { status, setStatus, availability, setAvailability, session, isLoading } = useDriverState('D001');
+  // Derived state from tripActive
+  const driverStatus: 'driving' | 'idle' = tripActive ? 'driving' : 'idle';
+  const driverAvailability = tripActive ? 'unavailable' : 'available';
+
+  // Load driver, bus, and route data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        // Get driver profile
+        const driverRes = await fetch('/api/drivers/me', {
+          headers: { 'Authorization': `Bearer ${currentUser ? await currentUser.getIdToken() : ''}` },
+        });
+        if (driverRes.ok) {
+          const data = await driverRes.json();
+          setMyDriver(data.driver);
+          
+          // Get bus by driver's busId
+          if (data.driver?.busId) {
+            const busRes = await busApi.getById(data.driver.busId);
+            if (busRes.bus) {
+              setMyBus(busRes.bus);
+              setBusPos({ lat: 0, lng: 0 });
+              
+              // Get route if bus has routeId
+              if (busRes.bus.routeId) {
+                const routeRes = await routeApi.getById(busRes.bus.routeId);
+                if (routeRes.route) {
+                  setMyRoute(routeRes.route);
+                }
+              }
+            }
+          }
+        }
+      } catch (error: any) {
+        console.error('Failed to load driver data:', error);
+        setError(error.message || 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [currentUser]);
 
   useEffect(() => {
-    if (!tripActive) return;
+    if (!tripActive || !myBus) return;
     const t = setInterval(() => {
       setSpeed(Math.round(30 + Math.random() * 30));
       setBusPos(prev => ({
@@ -38,11 +85,11 @@ export default function DriverDashboard() {
       }));
     }, 2000);
     return () => clearInterval(t);
-  }, [tripActive]);
+  }, [tripActive, myBus]);
 
   const startTrip = () => {
     setTripActive(true);
-    setEvents(prev => [{time:new Date().toLocaleTimeString(), msg:'Trip started — Route A', type:'ok'}, ...prev]);
+    setEvents(prev => [{time:new Date().toLocaleTimeString(), msg:'Trip started on ' + (myRoute?.name || 'Unknown'), type:'ok'}, ...prev]);
   };
 
   const stopTrip = () => {
@@ -57,18 +104,33 @@ export default function DriverDashboard() {
     setTimeout(() => setSosActive(false), 5000);
   };
 
+  const driverName = myDriver?.name || (myDriver?.userId || '').substring(0, 8);
+
   return (
-    <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
+    <DashboardLayout role="driver" navItems={navItems} userName={driverName}>
       <div className="space-y-6">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-4">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+        
+        {loading && !myBus && !error && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d97706] mx-auto"></div>
+            <p className="text-gray-400 mt-4">Loading driver profile...</p>
+          </div>
+        )}
+
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-black text-white">Driver Dashboard 🚌</h1>
-            <p className="text-gray-400 text-sm mt-1">Rajesh Kumar · {myBus.number} · Route A</p>
+            <p className="text-gray-400 text-sm mt-1">{driverName} · {myBus?.number || 'Loading...'} · {myRoute?.name || 'Loading...'}</p>
           </div>
           <div className="flex items-center gap-3">
             <div className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold ${tripActive ? 'glass-green text-[#00C853]' : 'glass text-gray-400'}`}>
               <span className={`w-2 h-2 rounded-full ${tripActive ? 'bg-[#00C853] animate-pulse' : 'bg-gray-600'}`}/>
-              {tripActive ? 'Trip Active' : 'Off Duty'}
+              {tripActive ? 'On Trip' : 'Off Duty'}
             </div>
           </div>
         </div>
@@ -85,8 +147,8 @@ export default function DriverDashboard() {
 
         {/* Driver Status and Availability */}
         <div className="grid md:grid-cols-2 gap-6">
-          <DriverStatusCard currentStatus={status} onSelectStatus={setStatus} />
-          <DriverAvailabilityToggle availability={availability} onToggle={setAvailability} />
+          <DriverStatusCard currentStatus={driverStatus} onSelectStatus={() => {}} />
+          <DriverAvailabilityToggle availability={driverAvailability} onToggle={() => {}} />
         </div>
 
         {/* Stats */}
@@ -95,7 +157,7 @@ export default function DriverDashboard() {
             { l:'Speed', v:`${speed} km/h`, icon:'🚀', c:'gold', active:tripActive },
             { l:'Safety Score', v:'94%', icon:'🛡️', c:'green', active:true },
             { l:'Today\'s Trips', v:'2', icon:'🗺️', c:'gold', active:true },
-            { l:'Students', v:`${myBus.occupancy}`, icon:'👥', c:'green', active:true },
+            { l:'Students', v:`${myBus?.occupancy || 0}`, icon:'👥', c:'green', active:true },
           ].map(s => (
             <div key={s.l} className={`${s.c==='gold'?'glass-gold':'glass-green'} rounded-2xl p-4 hover-card`}>
               <div className="text-2xl mb-2">{s.icon}</div>
@@ -128,19 +190,19 @@ export default function DriverDashboard() {
               )}
               <div className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between text-gray-400">
-                  <span>Route</span><span className="text-white">Route A — Gandhipuram</span>
+                  <span>Route</span><span className="text-white">{myRoute?.name || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
-                  <span>Bus</span><span className="text-white">{myBus.number}</span>
+                  <span>Bus</span><span className="text-white">{myBus?.number || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
-                  <span>Passengers</span><span className="text-white">{myBus.occupancy}/{myBus.capacity}</span>
+                  <span>Passengers</span><span className="text-white">{myBus?.occupancy || 0}/{myBus?.capacity || 0}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
-                  <span>Status</span><span className="text-white capitalize">{status}</span>
+                  <span>Status</span><span className="text-white capitalize">{driverStatus}</span>
                 </div>
                 <div className="flex justify-between text-gray-400">
-                  <span>Availability</span><span className="text-white capitalize">{availability}</span>
+                  <span>Availability</span><span className="text-white capitalize">{driverAvailability}</span>
                 </div>
               </div>
             </div>
@@ -175,7 +237,7 @@ export default function DriverDashboard() {
                 <h3 className="font-bold text-white">Live GPS Location</h3>
                 {tripActive && <span className="text-xs text-[#00C853] glass-green px-2 py-1 rounded-full animate-pulse">Sharing Location</span>}
               </div>
-              <MapMock buses={[{...myBus, lat:busPos.lat, lng:busPos.lng, speed}]} route={myRoute} height={380}/>
+              <MapMock buses={myBus ? [{...myBus, lat:busPos.lat, lng:busPos.lng, speed}] : []} route={myRoute} height={380}/>
             </div>
           </div>
         </div>

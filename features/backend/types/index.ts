@@ -73,11 +73,18 @@ export interface Trip extends BaseEntity {
 
 export interface Attendance extends BaseEntity {
   studentId: string;
+  studentName?: string;
+  rollNo?: string;
   busId: string;
   tripId: string;
+  driverId: string;
+  routeId: string;
+  stopId?: string;
+  stopName?: string;
   status: 'picked_up' | 'dropped_off';
   scannedBy: 'qr' | 'rfid' | 'manual';
   scanId: string;
+  timestamp: number;
 }
 
 export interface Notification extends BaseEntity {

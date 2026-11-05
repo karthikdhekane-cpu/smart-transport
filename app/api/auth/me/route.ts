@@ -4,6 +4,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminFirestore, verifyIdToken } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const authHeader = request.headers.get('authorization');

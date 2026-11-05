@@ -7,6 +7,7 @@ import WeatherInfoCard from '@/components/weather/WeatherInfoCard';
 const navItems = [
   { href:'/admin',           icon:'🏠', label:'Dashboard' },
   { href:'/admin/fleet',     icon:'🚌', label:'Fleet Monitor' },
+  { href:'/admin/trips',     icon:'📅', label:'Trips' },
   { href:'/admin/analytics', icon:'📊', label:'Analytics' },
   { href:'/admin/drivers',   icon:'👨‍✈️', label:'Drivers' },
   { href:'/admin/students',  icon:'🎓', label:'Students' },

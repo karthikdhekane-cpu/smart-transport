@@ -1,8 +1,10 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { mockAttendanceRecords } from '@/features/attendance/mock/data';
-import { mockBuses } from '@/lib/mockData';
+import { tripApi } from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
+
+export const dynamic = 'force-dynamic';
 
 const navItems = [
   { href:'/driver',          icon:'🏠', label:'Dashboard' },
@@ -13,18 +15,44 @@ const navItems = [
   { href:'/driver/attendance', icon:'📋', label:'Attendance' },
 ];
 
-const mockTrips = [
-  { id: 'TRIP-001', date: 'Today', startTime: '8:05 AM', endTime: '8:40 AM', route: 'Route A — Gandhipuram', status: 'completed', busId: 'BUS-01', students: 38 },
-  { id: 'TRIP-002', date: 'Today', startTime: '4:30 PM', endTime: '5:05 PM', route: 'Route A — Gandhipuram', status: 'completed', busId: 'BUS-01', students: 40 },
-  { id: 'TRIP-003', date: 'Yesterday', startTime: '8:02 AM', endTime: '8:35 AM', route: 'Route A — Gandhipuram', status: 'completed', busId: 'BUS-01', students: 42 },
-  { id: 'TRIP-004', date: 'Yesterday', startTime: '4:28 PM', endTime: '5:02 PM', route: 'Route A — Gandhipuram', status: 'completed', busId: 'BUS-01', students: 35 },
-  { id: 'TRIP-005', date: 'Aug 14', startTime: '8:08 AM', endTime: '8:45 AM', route: 'Route A — Gandhipuram', status: 'completed', busId: 'BUS-01', students: 39 },
-];
-
 export default function TripHistoryPage() {
+  const [trips, setTrips] = useState<any[]>([]);
+  const [driver, setDriver] = useState<any>(null);
   const [filter, setFilter] = useState<'all' | 'completed' | 'active'>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { currentUser } = useAuth();
 
-  const filteredTrips = mockTrips.filter(trip => {
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        // Get driver profile to get driver name
+        const driverRes = await fetch('/api/drivers/me', {
+          headers: {
+            'Authorization': `Bearer ${currentUser?.uid ? await currentUser.getIdToken() : ''}`,
+          },
+        });
+        if (driverRes.ok) {
+          const data = await driverRes.json();
+          setDriver(data.driver);
+        }
+        
+        // Get trips for this driver
+        const data = await tripApi.getAll(undefined, currentUser?.uid);
+        setTrips(data.trips || []);
+      } catch (error: any) {
+        console.error('Failed to load trip history:', error);
+        setError(error.message || 'Failed to load data');
+        setTrips([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [currentUser]);
+
+  const filteredTrips = trips.filter((trip: any) => {
     if (filter === 'all') return true;
     if (filter === 'completed') return trip.status === 'completed';
     if (filter === 'active') return trip.status === 'active';
@@ -40,9 +68,27 @@ export default function TripHistoryPage() {
     }
   };
 
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  };
+
+  const formatTime = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const driverName = driver?.name || (currentUser?.displayName || currentUser?.email || 'Driver').split('@')[0];
+
   return (
-    <DashboardLayout role="driver" navItems={navItems} userName="Rajesh Kumar">
+    <DashboardLayout role="driver" navItems={navItems} userName={driverName}>
       <div className="space-y-6">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/50 rounded-2xl p-4">
+            <p className="text-red-400 text-sm">{error}</p>
+          </div>
+        )}
+        
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-2xl font-black">Trip History 📅</h1>
@@ -67,21 +113,26 @@ export default function TripHistoryPage() {
 
         {/* Trip list */}
         <div className="glass rounded-2xl p-6">
-          {filteredTrips.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00C853] mx-auto mb-4"></div>
+              <p className="text-gray-400">Loading trips...</p>
+            </div>
+          ) : filteredTrips.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-5xl mb-4">📅</div>
               <p className="text-gray-400">No trips found</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredTrips.map((trip) => (
+              {filteredTrips.map((trip: any) => (
                 <div key={trip.id} className="flex items-center gap-4 p-4 glass rounded-xl hover-card">
                   <div className="w-12 h-12 rounded-xl bg-[#00C853]/20 flex items-center justify-center text-2xl">
                     🚌
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <div className="font-semibold text-white">{trip.route}</div>
+                      <div className="font-semibold text-white">Trip Route</div>
                       <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(trip.status)}`}>
                         {trip.status.charAt(0).toUpperCase() + trip.status.slice(1)}
                       </span>
@@ -89,11 +140,11 @@ export default function TripHistoryPage() {
                     <div className="grid grid-cols-4 gap-2 text-xs text-gray-400">
                       <div>
                         <span className="block text-gray-600">Date</span>
-                        {trip.date}
+                        {formatDate(trip.createdAt)}
                       </div>
                       <div>
                         <span className="block text-gray-600">Time</span>
-                        {trip.startTime} - {trip.endTime}
+                        {trip.startTime ? formatTime(trip.startTime) : 'N/A'} - {trip.endTime ? formatTime(trip.endTime) : 'Ongoing'}
                       </div>
                       <div>
                         <span className="block text-gray-600">Bus</span>
@@ -101,13 +152,10 @@ export default function TripHistoryPage() {
                       </div>
                       <div>
                         <span className="block text-gray-600">Students</span>
-                        {trip.students}
+                        {trip.studentCount ?? '—'}
                       </div>
                     </div>
                   </div>
-                  <button className="glass text-gray-400 hover:text-white py-2 px-4 rounded-xl text-xs transition-all">
-                    View Details
-                  </button>
                 </div>
               ))}
             </div>
@@ -119,8 +167,8 @@ export default function TripHistoryPage() {
           <h3 className="font-bold text-white mb-4">Attendance Summary (Last 5 Trips)</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Total Students Picked Up', value: mockAttendanceRecords.filter(r => r.status === 'picked_up').length },
-              { label: 'Total Students Dropped Off', value: mockAttendanceRecords.filter(r => r.status === 'dropped_off').length },
+              { label: 'Total Students Picked Up', value: trips.reduce((acc, t: any) => acc + (t.studentCount || 0), 0) },
+              { label: 'Total Students Dropped Off', value: trips.filter((t: any) => t.status === 'completed').reduce((acc, t: any) => acc + (t.studentCount || 0), 0) },
               { label: 'Attendance Rate', value: '98%' },
               { label: 'Attendance Issues', value: '0' },
             ].map(s => (

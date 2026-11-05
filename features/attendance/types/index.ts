@@ -14,6 +14,8 @@ export interface AttendanceRecord {
   rollNo?: string;
   busId: string;
   tripId?: string;
+  driverId?: string;
+  routeId?: string;
   stopId?: string;
   stopName?: string;
   timestamp: number;
@@ -32,23 +34,23 @@ export interface ScannedData {
 
 // === Attendance Service Interface ===
 export interface IAttendanceService {
-  // Records
-  getAllAttendanceRecords(): AttendanceRecord[];
-  getAttendanceByBus(busId: string): AttendanceRecord[];
-  getAttendanceByStudent(studentId: string): AttendanceRecord[];
-  getAttendanceByTrip(tripId: string): AttendanceRecord[];
+  // Records - Async for Firestore support
+  getAllAttendanceRecords(): Promise<AttendanceRecord[]>;
+  getAttendanceByBus(busId: string): Promise<AttendanceRecord[]>;
+  getAttendanceByStudent(studentId: string): Promise<AttendanceRecord[]>;
+  getAttendanceByTrip(tripId: string): Promise<AttendanceRecord[]>;
   
-  // Create records
-  createAttendanceRecord(record: Omit<AttendanceRecord, 'id' | 'timestamp'>): string;
+  // Create records - Async for Firestore support
+  createAttendanceRecord(record: Omit<AttendanceRecord, 'id' | 'timestamp'>): Promise<string>;
   
   // Duplicate prevention
   checkDuplicateScan(scanId: string): boolean;
   
-  // QR Attendance
-  processQRScan(data: string): { success: boolean; message: string; recordId?: string };
+  // QR Attendance - Async for Firestore support
+  processQRScan(data: string): Promise<{ success: boolean; message: string; recordId?: string }>;
   
-  // RFID Attendance
-  processRFIDScan(tagId: string): { success: boolean; message: string; recordId?: string };
+  // RFID Attendance - Async for Firestore support
+  processRFIDScan(tagId: string): Promise<{ success: boolean; message: string; recordId?: string }>;
   
   // Mock data
   getMockAttendanceRecords(): AttendanceRecord[];

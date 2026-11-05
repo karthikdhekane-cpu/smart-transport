@@ -2,6 +2,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { signInWithEmailAndPassword, getIdTokenResult } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import type { User } from 'firebase/auth';
 
 type Role = 'student' | 'driver' | 'admin' | 'parent';
 type Stage = 'select' | 'login';
@@ -101,10 +105,41 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1400));
-    setSuccess(true);
-    await new Promise(r => setTimeout(r, 600));
-    router.push(`/${role}`);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Get custom claims to determine role
+      const idTokenResult = await getIdTokenResult(user);
+      const role = idTokenResult.claims?.role as Role;
+      
+      if (!role || !['admin', 'driver', 'student', 'parent'].includes(role)) {
+        alert('Access denied: No role assigned. Please contact admin.');
+        await user.delete(); // Clean up the user
+        setLoading(false);
+        return;
+      }
+      
+      setSuccess(true);
+      await new Promise(r => setTimeout(r, 600));
+      router.push(`/${role}`);
+    } catch (error: any) {
+      console.error('Login error:', error);
+      let message = 'Login failed';
+      if (error.code === 'auth/user-not-found') {
+        message = 'User not found. Please check your email.';
+      } else if (error.code === 'auth/wrong-password') {
+        message = 'Incorrect password.';
+      } else if (error.code === 'auth/invalid-email') {
+        message = 'Invalid email address.';
+      } else if (error.code === 'auth/invalid-credential') {
+        message = 'Invalid email or password.';
+      } else {
+        message = error.message || 'Login failed';
+      }
+      alert(message);
+      setLoading(false);
+    }
   };
 
   return (
